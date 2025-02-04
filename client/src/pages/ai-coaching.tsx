@@ -17,6 +17,7 @@ export default function AiCoaching() {
 
   const { data: conversations, isLoading: isLoadingConversations } = useQuery<SelectNote[]>({
     queryKey: ["/api/notes"],
+    refetchInterval: 1000, // Poll every second for new messages
   });
 
   const coachingMutation = useMutation({
@@ -32,7 +33,7 @@ export default function AiCoaching() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
       toast({
@@ -74,6 +75,7 @@ export default function AiCoaching() {
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Share your thoughts or ask questions about leveraging your strengths..."
                     className="min-h-[100px]"
+                    disabled={coachingMutation.isPending}
                   />
                   <Button
                     type="submit"
@@ -105,17 +107,26 @@ export default function AiCoaching() {
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ) : conversations?.length === 0 ? (
+                ) : !conversations?.length ? (
                   <p className="text-center text-muted-foreground py-8">
                     No conversations yet. Start by sending a message above.
                   </p>
                 ) : (
                   <div className="space-y-4">
                     {conversations?.map((note) => (
-                      <div key={note.id} className="p-4 rounded-lg border">
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {note.content}
-                        </p>
+                      <div key={note.id} className="space-y-4">
+                        <div className="p-4 rounded-lg bg-muted/50">
+                          <p className="text-sm font-medium mb-2">You:</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {note.content.split('\n\nA:')[0].replace('Q: ', '')}
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-lg border bg-card">
+                          <p className="text-sm font-medium mb-2">AI Coach:</p>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {note.content.split('\n\nA: ')[1]}
+                          </p>
+                        </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           {new Date(note.createdAt!).toLocaleString()}
                         </p>
