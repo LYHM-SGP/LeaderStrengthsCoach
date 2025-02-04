@@ -13,44 +13,44 @@ const DOMAIN_CATEGORIES = [
 const THEMES = {
   EXECUTING: [
     { rank: 15, name: 'Achiever' },
-    { rank: 23, name: 'Discipline' },
-    { rank: 17, name: 'Actuator' },
-    { rank: 20, name: 'Maximizer' },
     { rank: 21, name: 'Arranger' },
+    { rank: 18, name: 'Belief' },
+    { rank: 33, name: 'Consistency' },
+    { rank: 6, name: 'Deliberative' },
+    { rank: 23, name: 'Discipline' },
     { rank: 13, name: 'Focus' },
-    { rank: 12, name: 'Command' },
-    { rank: 7, name: 'Self-Assurance' },
-    { rank: 6, name: 'Deliberative' }
+    { rank: 16, name: 'Responsibility' },
+    { rank: 24, name: 'Restorative' }
   ],
   INFLUENCING: [
-    { rank: 17, name: 'Actuator' },
-    { rank: 20, name: 'Maximizer' },
+    { rank: 17, name: 'Activator' },
     { rank: 12, name: 'Command' },
-    { rank: 7, name: 'Self-Assurance' },
     { rank: 22, name: 'Communication' },
-    { rank: 10, name: 'Significance' },
     { rank: 11, name: 'Competition' },
+    { rank: 20, name: 'Maximizer' },
+    { rank: 7, name: 'Self-Assurance' },
+    { rank: 10, name: 'Significance' },
     { rank: 25, name: 'Woo' }
   ],
   'RELATIONSHIP BUILDING': [
     { rank: 29, name: 'Adaptability' },
-    { rank: 34, name: 'Includer' },
     { rank: 27, name: 'Connectedness' },
-    { rank: 14, name: 'Individualization' },
     { rank: 26, name: 'Developer' },
-    { rank: 30, name: 'Positivity' },
     { rank: 31, name: 'Empathy' },
-    { rank: 19, name: 'Relator' },
-    { rank: 32, name: 'Harmony' }
+    { rank: 32, name: 'Harmony' },
+    { rank: 34, name: 'Includer' },
+    { rank: 14, name: 'Individualization' },
+    { rank: 30, name: 'Positivity' },
+    { rank: 19, name: 'Relator' }
   ],
   'STRATEGIC THINKING': [
     { rank: 4, name: 'Analytical' },
-    { rank: 9, name: 'Input' },
+    { rank: 28, name: 'Context' },
     { rank: 2, name: 'Futuristic' },
+    { rank: 5, name: 'Ideation' },
+    { rank: 9, name: 'Input' },
     { rank: 8, name: 'Intellection' },
     { rank: 1, name: 'Learner' },
-    { rank: 28, name: 'Context' },
-    { rank: 5, name: 'Ideation' },
     { rank: 3, name: 'Strategic' }
   ]
 };
@@ -74,16 +74,14 @@ export default function Strengths() {
           <div className="w-full h-24 mb-8 relative flex items-center justify-center">
             <div className="absolute inset-0 flex items-center">
               <div className="relative w-full">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-200 via-orange-200 to-blue-200 opacity-30"></div>
+                <div className="absolute inset-0">
+                  <div className="h-full w-full bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%25%22 height=%22100%25%22%3E%3Cdefs%3E%3ClinearGradient id=%22grad%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%220%25%22%3E%3Cstop offset=%220%25%22 style=%22stop-color:rgb(147,51,234);stop-opacity:0.3%22/%3E%3Cstop offset=%2250%25%22 style=%22stop-color:rgb(16,185,129);stop-opacity:0.3%22/%3E%3Cstop offset=%22100%25%22 style=%22stop-color:rgb(59,130,246);stop-opacity:0.3%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%22M0 24 C 20 24, 20 12, 40 12 S 60 24, 80 24 S 100 12, 120 12%22 stroke=%22url(%23grad)%22 fill=%22none%22 stroke-width=%222%22/%3E%3C/svg%3E')] bg-repeat-x"></div>
+                </div>
                 <div className="relative h-2 bg-gradient-to-r from-purple-500 via-emerald-500 to-blue-500"></div>
               </div>
             </div>
             <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-white to-transparent"></div>
             <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-white to-transparent"></div>
-            <div className="relative">
-              <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white"></div>
-              <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white"></div>
-            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-6">
