@@ -63,6 +63,27 @@ Remember to:
 - Stay focused on learning
 `,
   },
+
+  ethics: {
+    name: "Ethics Agent",
+    description: "Ensures compliance with ICF PCC standards and ethical guidelines",
+    prompt: (context: string) => `
+(Maintaining professional presence) I want to create a safe and ethical space for our exploration.
+
+Key ethical considerations:
+- Maintaining clear boundaries and confidentiality
+- Respecting your autonomy and self-determination
+- Supporting your growth without directing or advising
+- Staying within the scope of coaching
+
+Remember to:
+- Uphold ICF Code of Ethics
+- Maintain coaching presence
+- Honor client agenda
+- Practice cultural awareness
+- Ensure psychological safety
+`,
+  },
 };
 
 export const ICF_PCC_STANDARDS = {
@@ -140,7 +161,7 @@ How would you like to build on these insights?
 };
 
 export const agentSchema = z.object({
-  type: z.enum(["exploration", "reflection", "challenge"]),
+  type: z.enum(["exploration", "reflection", "challenge", "ethics"]),
   message: z.string().min(1, "Message is required"),
   context: z.string(),
 });
