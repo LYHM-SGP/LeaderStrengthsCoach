@@ -1,13 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/layout/sidebar";
-import StrengthChart from "@/components/layout/strength-chart";
+import StrengthsOverview from "@/components/layout/strengths-overview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import type { SelectStrength, SelectNote } from "@db/schema";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  
+
   const { data: strengths } = useQuery<SelectStrength[]>({
     queryKey: ["/api/strengths"],
   });
@@ -22,7 +22,7 @@ export default function Dashboard() {
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Welcome back, {user?.fullName}</h1>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card>
               <CardHeader>
@@ -51,7 +51,7 @@ export default function Dashboard() {
                 <CardTitle>Strengths Overview</CardTitle>
               </CardHeader>
               <CardContent>
-                {strengths && <StrengthChart strengths={strengths} />}
+                <StrengthsOverview />
               </CardContent>
             </Card>
           </div>
