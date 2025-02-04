@@ -36,7 +36,7 @@ export default function StrengthsOverview() {
   };
 
   return (
-    <div className="h-[500px]"> {/* Increased height for better visibility */}
+    <div className="h-[500px]">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={calculateDomainScores()}>
           <PolarGrid stroke="hsl(var(--muted-foreground))" />
