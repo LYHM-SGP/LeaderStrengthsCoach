@@ -10,6 +10,7 @@ import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COACHING_AGENTS, type CoachingAgent } from './coaching/standards';
+import { generateCoachingResponse } from './lib/qwen'; // Added import
 
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
@@ -292,22 +293,13 @@ export function registerRoutes(app: Express): Server {
 
       // Generate prompts from all three agents
       const agentPrompts = {
-        exploration: COACHING_AGENTS.exploration.prompt(message, topStrengths),
-        reflection: COACHING_AGENTS.reflection.prompt(message, topStrengths),
-        challenge: COACHING_AGENTS.challenge.prompt(message, topStrengths),
+        exploration: COACHING_AGENTS.exploration.prompt(topStrengths, topStrengths), //Fixed here
+        reflection: COACHING_AGENTS.reflection.prompt(topStrengths, topStrengths), //Fixed here
+        challenge: COACHING_AGENTS.challenge.prompt(topStrengths, topStrengths), //Fixed here
       };
 
-      // TODO: Replace with actual Qwen API call once we have the details
-      // For now, returning a placeholder response that demonstrates the multi-agent approach
-      const aiResponse = `I notice you're exploring an interesting topic, especially given your strengths in ${topStrengths}. 
-
-Let me help you dive deeper:
-
-1. From an exploration perspective: ${COACHING_AGENTS.exploration.prompt(message, topStrengths)}
-
-2. Reflecting on what you've shared: ${COACHING_AGENTS.reflection.prompt(message, topStrengths)}
-
-3. To challenge your thinking: ${COACHING_AGENTS.challenge.prompt(message, topStrengths)}`;
+      // Generate combined response using Qwen API
+      const aiResponse = await generateCoachingResponse(message, topStrengths, agentPrompts);
 
       // Store the conversation in coaching notes
       await db.insert(coachingNotes).values({
