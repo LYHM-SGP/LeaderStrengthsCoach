@@ -23,6 +23,10 @@ export default function Profile() {
                   <dd className="text-muted-foreground mt-1">{user?.fullName}</dd>
                 </div>
                 <div>
+                  <dt className="font-medium text-lg">Email</dt>
+                  <dd className="text-muted-foreground mt-1">{user?.email}</dd>
+                </div>
+                <div>
                   <dt className="font-medium text-lg">Role</dt>
                   <dd className="text-muted-foreground mt-1">{user?.role}</dd>
                 </div>
@@ -33,6 +37,12 @@ export default function Profile() {
                 <div>
                   <dt className="font-medium text-lg">Organization</dt>
                   <dd className="text-muted-foreground mt-1">{user?.organization}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-lg">Account Created</dt>
+                  <dd className="text-muted-foreground mt-1">
+                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
+                  </dd>
                 </div>
               </dl>
             </CardContent>
