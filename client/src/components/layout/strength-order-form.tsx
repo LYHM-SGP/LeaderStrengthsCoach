@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertNoteSchema, type SelectNote } from "@db/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { THEMES } from "@/pages/strengths";
@@ -100,12 +102,17 @@ export default function StrengthOrderForm() {
         reader.onload = async (e) => {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            console.log("Processing Excel file...");
             const workbook = XLSX.read(data, { type: 'array' });
+            console.log("Workbook loaded:", workbook.SheetNames);
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
+            console.log("Excel rows:", rows);
 
             // Find header row with Theme columns
             const headerRow = rows[0];
+            console.log("Header row:", headerRow);
+
             const themeColumns: { index: number, themeNumber: number }[] = [];
 
             // Find which columns contain Theme numbers
