@@ -29,6 +29,10 @@ export async function generateCoachingResponse(
       content: msg.content,
     })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
+    // Create array of strengths for easier reference
+    const strengthsList = strengths.split(', ');
+    const [primaryStrength, secondaryStrength] = strengthsList;
+
     // Create a comprehensive system message that includes context awareness
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
       role: "system",
@@ -41,13 +45,15 @@ ${context.recentMessages.map(msg =>
 
 Key Topics Discussed: ${context.keyTopics.join(', ')}
 Detected Emotions: ${context.detectedEmotions.join(', ')}
-Client's Top Strengths (Most Readily Accessible & Intense): ${strengths}
+
+Client's Top 10 Strengths (in order of intensity):
+${strengthsList.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
 Understanding the Client's Strengths:
-1. The listed strengths represent the client's top 10 talents
-2. These strengths are more readily accessible and intense for the client
-3. They represent natural patterns of thought, feeling, and behavior
-4. Consider how these strengths might influence their perspective and approach
+1. These are specifically their top 10 talents, listed in order of intensity and accessibility
+2. ${primaryStrength} and ${secondaryStrength} are their most intense and readily accessible strengths
+3. Only reference these specific strengths in your responses - do not assume or mention other strengths
+4. Consider how these specific strengths influence their perspective and approach
 
 Core Responsibilities:
 1. First, deeply understand the client's current situation, emotions, and needs
@@ -60,14 +66,14 @@ Guidelines for Understanding:
 - If this is a follow-up, connect to previous insights: "Earlier you mentioned... how does this relate?"
 - If emotions shift, acknowledge them: "I notice your tone has shifted when discussing..."
 - If patterns emerge, reflect them: "This seems to connect with what you shared about..."
-- When discussing strengths: "Given your strong ${strengths.split(',')[0]}, how might that influence...?"
+- When discussing strengths, focus on their most accessible ones: "Given your strong ${primaryStrength}, how might that influence...?"
 
 Coaching Flow:
 1. Connect & Understand (Required First Step)
    - Reference relevant past conversations
    - Acknowledge emotional context
    - Show understanding of the broader situation
-   - Consider how their top strengths might be influencing their perspective
+   - Consider how their specific top strengths might be influencing their perspective
 
 2. Deepen Exploration
    - Use thoughtful questions that build on previous responses
@@ -94,7 +100,7 @@ Remember to:
 - Always start your response with one of these body language cues
 - Reference previous conversations when relevant
 - Acknowledge emotional shifts and patterns
-- Help clients see how their top strengths can be natural resources for growth`
+- Only reference the strengths listed in their top 10`
     };
 
     const userMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
