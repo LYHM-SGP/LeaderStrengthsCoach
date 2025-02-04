@@ -270,16 +270,16 @@ export default function AiCoaching() {
               </div>
             </div>
 
-            <div className="col-span-3 space-y-6">
-              <Card>
+            <div className="col-span-3">
+              <Card className="h-[calc(100vh-8rem)]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bot className="h-6 w-6 text-primary" />
                     {activeConversation?.title || "New Coaching Session"}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                <CardContent className="flex flex-col h-[calc(100%-5rem)]">
+                  <form onSubmit={handleSubmit} className="mb-4">
                     <Textarea
                       ref={textareaRef}
                       value={message}
@@ -292,7 +292,7 @@ export default function AiCoaching() {
                     <Button
                       type="submit"
                       disabled={coachingMutation.isPending || !message.trim()}
-                      className="w-full gap-2"
+                      className="w-full gap-2 mt-2"
                     >
                       {coachingMutation.isPending ? (
                         <>
@@ -308,68 +308,70 @@ export default function AiCoaching() {
                     </Button>
                   </form>
 
-                  <div className="mt-8 space-y-6">
-                    {activeConversation?.notes.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">
-                        Start by sending a message above.
-                      </p>
-                    ) : (
-                      activeConversation?.notes.map((note) => {
-                        const { question, answer } = formatMessage(note.content);
-                        return (
-                          <div key={note.id} className="space-y-4">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                <User className="h-5 w-5" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="bg-muted/50 rounded-lg p-4">
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {question}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {answer && (
+                  <div className="flex-1 overflow-y-auto flex flex-col-reverse">
+                    <div className="space-y-6">
+                      {activeConversation?.notes.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">
+                          Start by sending a message above.
+                        </p>
+                      ) : (
+                        [...(activeConversation?.notes || [])].reverse().map((note) => {
+                          const { question, answer } = formatMessage(note.content);
+                          return (
+                            <div key={note.id} className="space-y-4">
                               <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Bot className="h-5 w-5 text-primary" />
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                  <User className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1">
-                                  <div className="bg-primary/10 rounded-lg p-4">
-                                    <p className="text-sm whitespace-pre-wrap">
-                                      {formatResponse(answer)}
+                                  <div className="bg-muted/50 rounded-lg p-4">
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                      {question}
                                     </p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(note.createdAt!).toLocaleTimeString()}
-                                  </p>
                                 </div>
                               </div>
-                            )}
 
-                            {coachingMutation.isPending &&
-                              note === activeConversation.notes[activeConversation.notes.length - 1] &&
-                              !answer && (
+                              {answer && (
                                 <div className="flex items-start gap-3">
                                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                     <Bot className="h-5 w-5 text-primary" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="bg-primary/10 rounded-lg p-4">
-                                      <div className="flex items-center gap-2">
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        <p className="text-sm">Coach is thinking...</p>
-                                      </div>
+                                      <p className="text-sm whitespace-pre-wrap">
+                                        {formatResponse(answer)}
+                                      </p>
                                     </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {new Date(note.createdAt!).toLocaleTimeString()}
+                                    </p>
                                   </div>
                                 </div>
                               )}
-                          </div>
-                        );
-                      })
-                    )}
+
+                              {coachingMutation.isPending &&
+                                note === activeConversation.notes[0] &&
+                                !answer && (
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <Bot className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="bg-primary/10 rounded-lg p-4">
+                                        <div className="flex items-center gap-2">
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                          <p className="text-sm">Coach is thinking...</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
