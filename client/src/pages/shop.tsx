@@ -76,21 +76,12 @@ export default function Shop() {
       const res = await apiRequest("POST", "/api/checkout", { productId });
       const data = await res.json();
 
-      if (!data.sessionId) {
-        throw new Error('No session ID received from server');
+      if (!data.url) {
+        throw new Error('No checkout URL received from server');
       }
 
-      console.log('Got session ID:', data.sessionId);
-      const stripe = await getStripe();
-
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId
-      });
-
-      if (error) {
-        console.error('Stripe redirect error:', error);
-        throw error;
-      }
+      // Instead of using Stripe's redirectToCheckout, use the session URL directly
+      window.location.href = data.url;
     } catch (error) {
       console.error('Checkout error:', error);
       toast({
