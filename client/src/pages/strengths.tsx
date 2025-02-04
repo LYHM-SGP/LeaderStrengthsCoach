@@ -2,15 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import type { SelectStrength } from "@db/schema";
 import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/layout/sidebar";
+import StrengthOrderForm from "@/components/layout/strength-order-form";
 
-const DOMAIN_CATEGORIES = [
+export const DOMAIN_CATEGORIES = [
   'EXECUTING',
   'INFLUENCING',
   'RELATIONSHIP BUILDING',
   'STRATEGIC THINKING'
 ] as const;
 
-const THEMES = {
+export const THEMES = {
   EXECUTING: [
     { rank: 15, name: 'Achiever' },
     { rank: 21, name: 'Arranger' },
@@ -57,17 +58,32 @@ const THEMES = {
 
 export default function Strengths() {
   const { user } = useAuth();
+  const { data: strengths } = useQuery<SelectStrength[]>({
+    queryKey: ["/api/strengths"],
+  });
+
+  // Get top 5 strengths
+  const topStrengths = strengths
+    ?.sort((a, b) => a.score - b.score)
+    .slice(0, 5)
+    .map(s => s.name)
+    .join(" | ");
 
   return (
     <div className="min-h-screen flex">
       <Sidebar />
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold">Lawrence Yong</h1>
-            <p className="text-muted-foreground mt-1">
-              Learner | Futuristic | Strategic | Analytical | Ideation
-            </p>
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-2xl font-bold">{user?.fullName}</h1>
+              <p className="text-muted-foreground mt-1">
+                {topStrengths || "No strengths data available"}
+              </p>
+            </div>
+            {(!strengths || strengths.length === 0) && (
+              <StrengthOrderForm />
+            )}
           </div>
 
           <div className="grid grid-cols-4 gap-6">
@@ -80,33 +96,38 @@ export default function Strengths() {
                   </h2>
                 </div>
                 <div className="space-y-1">
-                  {THEMES[domain].map((theme) => (
-                    <div
-                      key={theme.name}
-                      className={`p-2.5 rounded ${
-                        domain === 'STRATEGIC THINKING'
-                          ? theme.rank <= 10
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-emerald-50'
-                          : domain === 'RELATIONSHIP BUILDING'
-                          ? 'bg-blue-50'
-                          : domain === 'INFLUENCING'
-                          ? theme.rank <= 10
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-orange-50'
-                          : theme.rank <= 10
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-purple-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">
-                          <span className="font-medium">{theme.name}</span>
+                  {THEMES[domain].map((theme) => {
+                    const userStrength = strengths?.find(s => s.name === theme.name);
+                    const rank = userStrength?.score || theme.rank;
+
+                    return (
+                      <div
+                        key={theme.name}
+                        className={`p-2.5 rounded ${
+                          domain === 'STRATEGIC THINKING'
+                            ? rank <= 10
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-emerald-50'
+                            : domain === 'RELATIONSHIP BUILDING'
+                            ? 'bg-blue-50'
+                            : domain === 'INFLUENCING'
+                            ? rank <= 10
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-orange-50'
+                            : rank <= 10
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-purple-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <span className="font-medium">{theme.name}</span>
+                          </div>
+                          <span className="text-sm">{rank}</span>
                         </div>
-                        <span className="text-sm">{theme.rank}</span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

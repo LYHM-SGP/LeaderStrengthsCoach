@@ -7,6 +7,13 @@ import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 
+// Assuming THEMES is defined elsewhere,  e.g., in a separate file or environment variable
+const THEMES = {
+  "Theme A": [{name: "Strength 1"}, {name: "Strength 2"}],
+  "Theme B": [{name: "Strength 3"}, {name: "Strength 4"}]
+};
+
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -33,6 +40,37 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.json(strength[0]);
+  });
+
+  app.post("/api/strengths/bulk", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const strengthsData = req.body;
+
+    try {
+      // Delete existing strengths for the user
+      await db.delete(strengths).where(eq(strengths.userId, req.user.id));
+
+      // Insert new strengths
+      const newStrengths = await db.insert(strengths)
+        .values(
+          strengthsData.map((strength: { name: string; score: number }) => ({
+            userId: req.user.id,
+            name: strength.name,
+            category: getStrengthCategory(strength.name),
+            score: strength.score,
+          }))
+        )
+        .returning();
+
+      res.json(newStrengths);
+    } catch (error) {
+      console.error('Error updating strengths:', error);
+      res.status(500).json({ 
+        message: "Failed to update strengths", 
+        details: (error as Error).message 
+      });
+    }
   });
 
   // Coaching notes routes
@@ -146,4 +184,14 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Helper function to determine strength category
+function getStrengthCategory(strengthName: string): string {
+  for (const [category, themes] of Object.entries(THEMES)) {
+    if (themes.some(theme => theme.name === strengthName)) {
+      return category;
+    }
+  }
+  return 'UNKNOWN';
 }
