@@ -87,13 +87,17 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "Invalid product configuration" });
       }
 
-      // Use relative URLs that will work in the Replit environment
+      // Construct absolute URLs for success and cancel
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const successUrl = `${baseUrl}/shop/success`;
+      const cancelUrl = `${baseUrl}/shop/cancel`;
+
       const session = await createCheckoutSession(
         productId,
         product,
         req.user.id,
-        "/shop/success",
-        "/shop/cancel"
+        successUrl,
+        cancelUrl
       );
 
       await db.insert(orders).values({
@@ -104,7 +108,7 @@ export function registerRoutes(app: Express): Server {
         amount: product.price,
       });
 
-      res.json({ sessionId: session.id, url: session.url });
+      res.json({ url: session.url });
     } catch (error) {
       console.error('Checkout error:', error);
       res.status(500).json({ 
