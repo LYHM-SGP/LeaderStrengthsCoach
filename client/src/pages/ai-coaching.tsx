@@ -6,8 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Bot, User, Plus } from "lucide-react";
+import { Loader2, Send, Bot, User, Plus, Trash2 } from "lucide-react";
 import type { SelectNote } from "@db/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ConversationGroup {
   id: string;
@@ -34,7 +45,7 @@ export default function AiCoaching() {
       const res = await fetch("/api/ai-coaching", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message,
           conversationId: activeConversationId || new Date().toISOString()
         }),
@@ -58,13 +69,40 @@ export default function AiCoaching() {
     },
   });
 
+  const clearHistoryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/notes/clear", {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error || "Failed to clear coaching history");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      toast({
+        title: "History Cleared",
+        description: "Your coaching conversation history has been cleared.",
+      });
+      setActiveConversationId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
     coachingMutation.mutate(message);
   };
 
-  // Handle Enter key
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -80,7 +118,6 @@ export default function AiCoaching() {
     };
   };
 
-  // Function to replace body language cues with emojis
   const formatResponse = (text: string) => {
     return text.replace(/\((.*?)\)/g, (_, action) => {
       const emojiMap: Record<string, string> = {
@@ -94,20 +131,18 @@ export default function AiCoaching() {
         'listening attentively': '👂',
       };
 
-      return Object.entries(emojiMap).find(([key]) => 
+      return Object.entries(emojiMap).find(([key]) =>
         action.toLowerCase().includes(key.toLowerCase())
       )?.[1] || '🤖';
     });
   };
 
-  // Group notes into conversations
   const conversations = React.useMemo(() => {
     if (!notes) return [];
 
     const groups: Record<string, SelectNote[]> = {};
     notes.forEach(note => {
-      // Use conversationId or format createdAt as a string key
-      const key = note.conversationId || 
+      const key = note.conversationId ||
         (note.createdAt ? new Date(note.createdAt).toISOString() : new Date().toISOString());
 
       if (!groups[key]) {
@@ -126,7 +161,7 @@ export default function AiCoaching() {
           month: 'long',
           day: 'numeric'
         }),
-        notes: notes.sort((a, b) => 
+        notes: notes.sort((a, b) =>
           new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
         )
       };
@@ -137,7 +172,6 @@ export default function AiCoaching() {
     });
   }, [notes]);
 
-  // Start new conversation
   const startNewConversation = () => {
     const newId = new Date().toISOString();
     setActiveConversationId(newId);
@@ -148,7 +182,6 @@ export default function AiCoaching() {
     });
   };
 
-  // Set the first conversation as active by default
   useEffect(() => {
     if (conversations.length > 0 && !activeConversationId) {
       setActiveConversationId(conversations[0].id);
@@ -164,17 +197,52 @@ export default function AiCoaching() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">AI Coaching Assistant</h1>
-            <Button 
-              onClick={startNewConversation}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Conversation
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={startNewConversation}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Conversation
+              </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Clear History
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear Coaching History</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently delete all your coaching conversations.
+                      This cannot be undone. Are you sure you want to continue?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => clearHistoryMutation.mutate()}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      {clearHistoryMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Clearing...
+                        </>
+                      ) : (
+                        "Clear History"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
 
           <div className="grid grid-cols-4 gap-6">
-            {/* Conversations List */}
             <div className="space-y-4">
               <h2 className="font-semibold text-lg">Conversations</h2>
               <div className="space-y-2">
@@ -194,7 +262,6 @@ export default function AiCoaching() {
               </div>
             </div>
 
-            {/* Active Conversation */}
             <div className="col-span-3 space-y-6">
               <Card>
                 <CardHeader>
@@ -243,7 +310,6 @@ export default function AiCoaching() {
                         const { question, answer } = formatMessage(note.content);
                         return (
                           <div key={note.id} className="space-y-4">
-                            {/* User message */}
                             <div className="flex items-start gap-3">
                               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                                 <User className="h-5 w-5" />
@@ -257,7 +323,6 @@ export default function AiCoaching() {
                               </div>
                             </div>
 
-                            {/* Coach response */}
                             {answer && (
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -276,24 +341,23 @@ export default function AiCoaching() {
                               </div>
                             )}
 
-                            {/* Loading state for pending response */}
-                            {coachingMutation.isPending && 
-                             note === activeConversation.notes[activeConversation.notes.length - 1] && 
-                             !answer && (
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Bot className="h-5 w-5 text-primary" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="bg-primary/10 rounded-lg p-4">
-                                    <div className="flex items-center gap-2">
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      <p className="text-sm">Coach is thinking...</p>
+                            {coachingMutation.isPending &&
+                              note === activeConversation.notes[activeConversation.notes.length - 1] &&
+                              !answer && (
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Bot className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="bg-primary/10 rounded-lg p-4">
+                                      <div className="flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <p className="text-sm">Coach is thinking...</p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         );
                       })

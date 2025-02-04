@@ -302,6 +302,24 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Clear coaching notes
+  app.delete("/api/notes/clear", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      await db.delete(coachingNotes)
+        .where(eq(coachingNotes.userId, req.user.id));
+
+      res.json({ message: "All coaching notes cleared successfully" });
+    } catch (error) {
+      console.error('Error clearing notes:', error);
+      res.status(500).json({
+        message: "Failed to clear coaching notes",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
