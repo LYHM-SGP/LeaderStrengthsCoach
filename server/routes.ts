@@ -3,14 +3,16 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { strengths, coachingNotes, products, orders } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COACHING_AGENTS } from './coaching/standards';
-import { generateCoachingResponse } from './lib/openai'; // Updated import
+import { generateCoachingResponse } from './lib/openai';
+import sentiment from 'sentiment';
+const sentimentAnalyzer = new sentiment();
 
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
@@ -254,7 +256,7 @@ export function registerRoutes(app: Express): Server {
       // Get user's strengths for context
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
-        orderBy: (strengths, { asc }) => [asc(strengths.score)],
+        orderBy: [{ column: strengths.score, order: "asc" }],
       });
 
       // Format strengths for context
@@ -263,46 +265,96 @@ export function registerRoutes(app: Express): Server {
         .map(s => s.name)
         .join(", ");
 
+      // Get recent conversation history
+      const recentNotes = await db.query.coachingNotes.findMany({
+        where: eq(coachingNotes.userId, userId),
+        orderBy: [{ column: coachingNotes.createdAt, order: "desc" }],
+        limit: 5,
+      });
+
+      // Perform sentiment analysis on the current message
+      const currentSentiment = sentimentAnalyzer.analyze(message);
+
+      // Build conversation context
+      const conversationContext = {
+        recentMessages: recentNotes.map(note => {
+          const { question, answer } = parseNoteContent(note.content);
+          return [
+            {
+              role: 'user' as const,
+              content: question,
+              sentiment: sentimentAnalyzer.analyze(question).score.toString(),
+              timestamp: note.createdAt!
+            },
+            {
+              role: 'assistant' as const,
+              content: answer,
+              timestamp: note.createdAt!
+            }
+          ];
+        }).flat(),
+        detectedEmotions: getEmotionsFromSentiment(currentSentiment),
+        keyTopics: extractKeyTopics(recentNotes)
+      };
+
       try {
-        // Generate response using OpenAI
-        const aiResponse = await generateCoachingResponse(message, topStrengths, {});
+        // Generate response using OpenAI with context
+        const aiResponse = await generateCoachingResponse(
+          message,
+          topStrengths,
+          conversationContext
+        );
 
         // Use today's date as conversation ID if none provided
         const today = new Date();
-        const dateId = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateId = today.toISOString().split('T')[0];
         const actualConversationId = conversationId || dateId;
 
-        // Store the conversation in coaching notes
+        // Store the conversation in coaching notes with sentiment
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session",
           content: `Q: ${message}\n\nA: ${aiResponse}`,
           conversationId: actualConversationId,
           tags: {
-            strengths: topStrengths
+            strengths: topStrengths,
+            sentiment: currentSentiment.score,
+            emotions: conversationContext.detectedEmotions
           }
         }).returning();
 
-        res.json({ response: aiResponse, note });
+        res.json({
+          response: aiResponse,
+          note,
+          context: {
+            sentiment: currentSentiment.score,
+            emotions: conversationContext.detectedEmotions
+          }
+        });
       } catch (error) {
         console.error('AI Coaching error:', error);
-        // Create a fallback note with the same conversation ID handling
-        const today = new Date();
-        const dateId = today.toISOString().split('T')[0];
-        const actualConversationId = conversationId || dateId;
-
+        // Create a fallback note with context
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session (Fallback)",
-          content: `Q: ${message}\n\nA: I'm currently experiencing some technical difficulties, but I'll do my best to help you explore this topic:\n\nWhat aspects of your strengths (${topStrengths}) would you like to discuss further?`,
-          conversationId: actualConversationId,
+          content: `Q: ${message}\n\nA: I notice from our previous conversations that we've been exploring ${extractKeyTopics(recentNotes).join(', ')}. I'd like to understand how this connects with what you're sharing now. Could you tell me more about what's on your mind?`,
+          conversationId: conversationId || new Date().toISOString().split('T')[0],
           tags: {
             strengths: topStrengths,
+            sentiment: currentSentiment.score,
+            emotions: conversationContext.detectedEmotions,
             fallback: true
           }
         }).returning();
 
-        res.json({ response: note.content, note });
+        res.json({
+          response: note.content,
+          note,
+          context: {
+            sentiment: currentSentiment.score,
+            emotions: conversationContext.detectedEmotions
+          }
+        });
       }
     } catch (error) {
       console.error('Database error:', error);
@@ -349,4 +401,36 @@ function getStrengthCategory(strengthName: string): string {
     }
   }
   return 'UNKNOWN';
+}
+
+// Helper functions for context analysis
+function parseNoteContent(content: string) {
+  const parts = content.split('\n\nA: ');
+  return {
+    question: parts[0]?.replace('Q: ', '').trim() || '',
+    answer: parts[1]?.trim() || ''
+  };
+}
+
+function getEmotionsFromSentiment(sentiment: { score: number }) {
+  const emotions = [];
+  if (sentiment.score > 2) emotions.push('very positive');
+  else if (sentiment.score > 0) emotions.push('positive');
+  else if (sentiment.score < -2) emotions.push('very negative');
+  else if (sentiment.score < 0) emotions.push('negative');
+  else emotions.push('neutral');
+  return emotions;
+}
+
+function extractKeyTopics(notes: typeof coachingNotes.$inferSelect[]) {
+  const topics = new Set<string>();
+  notes.forEach(note => {
+    const content = note.content.toLowerCase();
+    // Add basic topic extraction logic here
+    const commonTopics = ['goals', 'challenges', 'strengths', 'relationships', 'work', 'growth'];
+    commonTopics.forEach(topic => {
+      if (content.includes(topic)) topics.add(topic);
+    });
+  });
+  return Array.from(topics);
 }
