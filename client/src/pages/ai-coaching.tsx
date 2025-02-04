@@ -319,61 +319,65 @@ export default function AiCoaching() {
                           Start by sending a message above.
                         </p>
                       ) : (
-                        [...(activeConversation?.notes || [])].map((note) => {
-                          const { question, answer } = formatMessage(note.content);
-                          return (
-                            <div key={note.id} className="space-y-4">
-                              {answer && (
-                                <div className="flex items-start gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Bot className="h-5 w-5 text-primary" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="bg-primary/10 rounded-lg p-4">
-                                      <p className="text-sm whitespace-pre-wrap">
-                                        {formatResponse(answer)}
-                                      </p>
+                        [...(activeConversation?.notes || [])]
+                          .reverse()
+                          .map((note) => {
+                            const { question, answer } = formatMessage(note.content);
+                            return (
+                              <div key={note.id} className="space-y-4">
+                                {question && (
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                      <User className="h-5 w-5" />
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {new Date(note.createdAt!).toLocaleTimeString()}
-                                    </p>
+                                    <div className="flex-1">
+                                      <div className="bg-muted/50 rounded-lg p-4">
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                          {question}
+                                        </p>
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
 
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                  <User className="h-5 w-5" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="bg-muted/50 rounded-lg p-4">
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                      {question}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {coachingMutation.isPending &&
-                                note === activeConversation.notes[0] &&
-                                !answer && (
+                                {answer && (
                                   <div className="flex items-start gap-3">
                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                       <Bot className="h-5 w-5 text-primary" />
                                     </div>
                                     <div className="flex-1">
                                       <div className="bg-primary/10 rounded-lg p-4">
-                                        <div className="flex items-center gap-2">
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                          <p className="text-sm">Coach is thinking...</p>
-                                        </div>
+                                        <p className="text-sm whitespace-pre-wrap">
+                                          {formatResponse(answer)}
+                                        </p>
                                       </div>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {new Date(note.createdAt!).toLocaleTimeString()}
+                                      </p>
                                     </div>
                                   </div>
                                 )}
-                            </div>
-                          );
-                        })
+
+                                {coachingMutation.isPending &&
+                                  note === activeConversation?.notes[activeConversation.notes.length - 1] &&
+                                  !answer && (
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Bot className="h-5 w-5 text-primary" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="bg-primary/10 rounded-lg p-4">
+                                          <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <p className="text-sm">Coach is thinking...</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                              </div>
+                            );
+                          })
                       )}
                     </div>
                   </div>
