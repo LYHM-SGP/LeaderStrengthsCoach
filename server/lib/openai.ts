@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { ConversationPhase, COACHING_AGENTS } from "../coaching/standards";
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface ConversationContext {
@@ -18,76 +20,54 @@ export async function generateCoachingResponse(
   context: ConversationContext
 ): Promise<string> {
   try {
-    console.log('Generating coaching response for message:', message);
+    let currentPhase: ConversationPhase = 'exploration';
+
+    // Use progression agent to determine conversation phase
+    currentPhase = COACHING_AGENTS.progression.analyzeContext(
+      context.recentMessages,
+      currentPhase
+    ) as ConversationPhase;
+
+    console.log('Current conversation phase:', currentPhase);
     console.log('Using strengths context:', strengths);
     console.log('Conversation context:', JSON.stringify(context, null, 2));
 
-    // Build conversation history for context
-    const conversationHistory = context.recentMessages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    })) as OpenAI.Chat.ChatCompletionMessageParam[];
-
-    // Parse the ranked strengths properly
+    // Parse the ranked strengths
     const strengthsList = strengths.split('\n').map(s => {
       const [rank, name] = s.split('. ');
       return { rank: parseInt(rank), name };
     });
 
-    // Get the top strengths for easy reference
     const [primary, secondary] = strengthsList;
 
-    // Create a comprehensive system message that includes context awareness
+    // Create phase-appropriate system message
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
       role: "system",
-      content: `You are an ICF PCC certified coach with a warm, engaging personality. Follow these coaching guidelines:
+      content: `You are an ICF PCC certified coach with a warm, engaging personality. 
+Current Phase: ${currentPhase}
 
-COACHING APPROACH:
-1. Start with exploration and understanding
-2. Focus on emotions, values, beliefs, and patterns
-3. Let insights and goals emerge naturally
-4. Only bring in strengths after thorough exploration
-5. Always probe for learning and new awareness
-
-Previous Conversation Summary:
+CONVERSATION CONTEXT:
+Previous Messages: 
 ${context.recentMessages.map(msg => 
   `- ${msg.role}: ${msg.content} (Emotion: ${msg.sentiment || 'neutral'})`
 ).join('\n')}
 
-Key Topics Discussed: ${context.keyTopics.join(', ')}
+Key Topics: ${context.keyTopics.join(', ')}
 Detected Emotions: ${context.detectedEmotions.join(', ')}
 
-Client's Top 10 Strengths (reference only after exploration):
+COACHING GUIDELINES:
+${COACHING_AGENTS[currentPhase].prompt(context.recentMessages[0]?.content || '')}
+
+STRENGTHS CONTEXT (only reference if in strengths phase):
+Top Strengths:
 ${strengths}
 
-COACHING PROCESS:
-1. Start with "What" and "How" questions to explore experience
-2. Listen for emotions, values, and beliefs
-3. Help surface patterns and insights
-4. Partner in goal setting when ready
-5. Only then, consider how strengths might support goals
-
-STRENGTH GUIDELINES (only after exploration):
-1. The client's strengths are listed 1-10 in order of intensity
-2. ${primary.name} is their MOST intense strength (#1), followed by ${secondary.name} (#2)
-3. Only reference strengths from their actual top 10 list
-4. Always mention the strength's position (1-10) when referencing it
-5. Never assume or mention strengths that aren't in their list
-
 Remember to:
-- Express warmth and attentiveness through these specific body language cues (pick one per response):
-  - (nodding thoughtfully)
-  - (leaning forward)
-  - (smiling warmly)
-  - (making eye contact)
-  - (gesturing encouragingly)
-  - (tilting head)
-  - (showing genuine interest)
-  - (listening attentively)
-- Always start your response with one of these body language cues
-- Focus on understanding before action
-- Let insights emerge naturally
-- Check for learning and new awareness`
+- Stay aligned with the current phase: ${currentPhase}
+- Use appropriate body language cues
+- Maintain warm, engaging presence
+- Focus on forward movement
+- Check for learning and insights`
     };
 
     const userMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
@@ -96,10 +76,13 @@ Remember to:
     };
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         systemMessage,
-        ...conversationHistory,
+        ...context.recentMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
         userMessage
       ],
       temperature: 0.7,
@@ -107,7 +90,6 @@ Remember to:
     });
 
     if (!response.choices[0]?.message?.content) {
-      console.error('Invalid OpenAI response format:', response);
       throw new Error('Invalid response format from OpenAI API');
     }
 
@@ -123,5 +105,5 @@ function generateFallbackResponse(message: string, strengths: string, context: C
     ? `I notice you've been feeling ${context.detectedEmotions.join(' and ')} as we discuss this. `
     : '';
 
-  return `(nodding thoughtfully) ${emotionalContext}I'd like to understand more about your experience. Could you tell me more about what this means for you and how you're feeling about it?`;
+  return `(nodding thoughtfully) ${emotionalContext}Given what you've shared about your situation, what would you like to focus on or change?`;
 }

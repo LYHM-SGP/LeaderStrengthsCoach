@@ -1,45 +1,101 @@
 import { z } from "zod";
 
+// Add progression states to track conversation phase
+export type ConversationPhase = 'exploration' | 'understanding' | 'goalsetting' | 'strengths';
+
 export const COACHING_AGENTS = {
+  progression: {
+    name: "Progression Agent",
+    description: "Determines when to progress conversation phases",
+    analyzeContext: (messages: any[], currentPhase: ConversationPhase) => {
+      // Count consecutive exploration messages
+      let explorationCount = 0;
+      let hasSharedEmotions = false;
+      let hasSharedImpact = false;
+      let hasSharedDesire = false;
+
+      // Analyze recent messages for progression indicators
+      messages.forEach(msg => {
+        const content = msg.content.toLowerCase();
+
+        // Check for emotional content
+        if (content.includes('feel') || content.includes('angry') || 
+            content.includes('sad') || content.includes('happy')) {
+          hasSharedEmotions = true;
+        }
+
+        // Check for impact statements
+        if (content.includes('impact') || content.includes('affect') || 
+            content.includes('because') || content.includes('leads to')) {
+          hasSharedImpact = true;
+        }
+
+        // Check for desire to change
+        if (content.includes('want') || content.includes('wish') || 
+            content.includes('hope') || content.includes('would like')) {
+          hasSharedDesire = true;
+        }
+      });
+
+      // Determine if ready to progress based on phase
+      switch(currentPhase) {
+        case 'exploration':
+          if (hasSharedEmotions && messages.length >= 3) {
+            return 'understanding';
+          }
+          break;
+        case 'understanding':
+          if (hasSharedImpact && hasSharedEmotions && messages.length >= 5) {
+            return 'goalsetting';
+          }
+          break;
+        case 'goalsetting':
+          if (hasSharedDesire) {
+            return 'strengths';
+          }
+          break;
+      }
+
+      return currentPhase;
+    }
+  },
   exploration: {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
     prompt: (context: string) => `
-(Making eye contact with genuine interest) I notice you're bringing this topic up, and I'd like to understand more deeply what this means for you.
+(Making eye contact with genuine interest) I notice you're bringing this topic up, and I'd like to understand more deeply.
 
-Let's explore together:
-- What emotions or feelings are present for you right now?
-- What makes this particularly meaningful or important to you?
-- How does this connect with your values or what matters most?
-- What thoughts or beliefs come up when you consider this situation?
+Let's explore:
+- What emotions or feelings are present for you?
+- How is this impacting you?
+- What matters most to you in this situation?
+- What would you like to be different?
 
 Remember to:
-- Create space for emotional exploration first
-- Listen for values and beliefs
-- Acknowledge feelings without rushing to solutions
-- Use body language cues in (parentheses)
-- Stay curious and open
+- Listen for emotional content
+- Acknowledge feelings
+- Stay curious but focused
+- Move forward when appropriate
 `,
   },
 
-  reflection: {
-    name: "Reflection Agent",
-    description: "Summarizes and mirrors to build awareness",
+  understanding: {
+    name: "Understanding Agent",
+    description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) I'm hearing several layers in what you're sharing - both what happened and how you're experiencing it.
+(Nodding thoughtfully) I'm hearing several important themes in what you're sharing.
 
-I'd like to understand more:
-- What impact is this having on you?
-- What aspects feel most significant?
-- What patterns or themes do you notice?
+Let's understand more deeply:
+- What patterns do you notice in this situation?
+- How does this connect to what matters to you?
 - What insights are emerging for you?
+- What would be different if you could change this?
 
 Remember to:
-- Mirror both content and emotion
-- Use body language cues in (parentheses)
-- Share observations gently
-- Explore meaning and patterns
-- Create space for self-discovery
+- Surface patterns and insights
+- Connect to values
+- Look for readiness to change
+- Progress when understanding is clear
 `,
   },
 
@@ -47,41 +103,39 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) Based on what we've explored about your situation, I'm curious about what you'd like to create or achieve.
+(Leaning forward with interest) Based on what we've explored, I'm curious about what you'd like to create or achieve.
 
-Let's explore possibilities:
-- What would you like to be different?
-- What outcome would be meaningful for you?
-- What changes would align with your values?
-- What would success look like?
+Let's focus on possibilities:
+- What specific changes would you like to see?
+- What would success look like for you?
+- What first steps feel possible?
+- What support might you need?
 
 Remember to:
-- Let goals emerge from exploration
-- Connect goals to values and meaning
-- Use body language cues in (parentheses)
-- Partner rather than direct
-- Stay client-centered
+- Be specific and actionable
+- Connect goals to values
+- Build on insights gained
+- Use strengths when ready
 `,
   },
 
   strengths: {
     name: "Strengths Integration Agent",
-    description: "Uses strengths to support client's goals after exploration",
+    description: "Uses strengths to support client's goals",
     prompt: (context: string) => `
-(Showing genuine interest) Now that we've explored your situation and goals, I'm curious about how your natural talents might support you.
+(Showing genuine interest) Given your goals, let's explore how your natural talents might support you.
 
-Let's explore together:
-- What patterns of success have you noticed in similar situations?
-- How have you navigated challenges like this before?
-- What approaches tend to work best for you?
-- What insights about your strengths are emerging?
+Let's look at:
+- What approaches have worked well for you before?
+- How might your strengths help with your goals?
+- What strengths feel most relevant?
+- What first step would leverage your talents?
 
 Remember to:
-- Reference strengths only after deep exploration
-- Connect strengths to client's goals
-- Use body language cues in (parentheses)
-- Focus on client's insights
-- Support natural development
+- Connect strengths to specific goals
+- Build on past successes
+- Focus on practical application
+- Maintain forward momentum
 `,
   },
 };
@@ -161,7 +215,7 @@ How would you like to build on these insights?
 };
 
 export const agentSchema = z.object({
-  type: z.enum(["exploration", "reflection", "goalSetting", "strengths"]),
+  type: z.enum(["exploration", "understanding", "goalSetting", "strengths"]),
   message: z.string().min(1, "Message is required"),
   context: z.string(),
 });
