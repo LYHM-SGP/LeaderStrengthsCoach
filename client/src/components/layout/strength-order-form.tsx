@@ -11,6 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { THEMES, DOMAIN_CATEGORIES } from "@/pages/strengths";
@@ -57,7 +67,9 @@ const INITIAL_RANKINGS = {
 
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
+  const [hasChanges, setHasChanges] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -73,6 +85,7 @@ export default function StrengthOrderForm() {
         title: "Strengths updated",
         description: "Your strengths order has been saved successfully.",
       });
+      setHasChanges(false);
     },
     onError: (error) => {
       toast({
@@ -127,6 +140,7 @@ export default function StrengthOrderForm() {
 
             if (Object.keys(newRankings).length > 0) {
               setStrengthsOrder(prev => ({ ...prev, ...newRankings }));
+              setHasChanges(true);
               toast({
                 title: "Excel processed",
                 description: `Updated ${Object.keys(newRankings).length} strength rankings from the Excel file.`,
@@ -169,92 +183,131 @@ export default function StrengthOrderForm() {
     updateStrengths.mutate(orderedStrengths);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Update Strengths Order</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Update Your Strengths Order</DialogTitle>
-        </DialogHeader>
+  const handleClose = () => {
+    if (hasChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      setOpen(false);
+    }
+  };
 
-        <div className="mb-6 p-4 border rounded-lg bg-secondary/20">
-          <Label htmlFor="file-upload" className="block mb-2">Upload Rankings Excel File</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="file-upload"
-              type="file"
-              accept=".xlsx"
-              onChange={handleFileUpload}
-              className="flex-1"
-              disabled={isProcessing}
-            />
-            <Button variant="outline" size="icon" disabled={isProcessing}>
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+  const handleConfirmClose = () => {
+    setShowUnsavedDialog(false);
+    setOpen(false);
+    setHasChanges(false);
+    // Reset to initial state
+    setStrengthsOrder(INITIAL_RANKINGS);
+  };
+
+  const handleCancelClose = () => {
+    setShowUnsavedDialog(false);
+  };
+
+  const handleStrengthChange = (strengthName: string, newValue: number) => {
+    if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
+      setStrengthsOrder((prev) => ({
+        ...prev,
+        [strengthName]: newValue,
+      }));
+      setHasChanges(true);
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogTrigger asChild>
+          <Button variant="outline">Update Strengths Order</Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Update Your Strengths Order</DialogTitle>
+          </DialogHeader>
+
+          <div className="mb-6 p-4 border rounded-lg bg-secondary/20">
+            <Label htmlFor="file-upload" className="block mb-2">Upload Rankings Excel File</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="file-upload"
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileUpload}
+                className="flex-1"
+                disabled={isProcessing}
+              />
+              <Button variant="outline" size="icon" disabled={isProcessing}>
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <UploadCloud className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Upload an Excel file containing your strength rankings
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {DOMAIN_CATEGORIES.map((domain) => (
+              <div key={domain} className="space-y-2">
+                <div className="text-center border-b border-gray-200 pb-2">
+                  <h2 className="text-sm font-semibold tracking-wider uppercase">
+                    {domain}
+                    <span className="text-xs align-top ml-0.5">®</span>
+                  </h2>
+                </div>
+                <div className="space-y-1">
+                  {THEMES[domain].map((theme) => (
+                    <div key={theme.name} className="mb-2">
+                      <Label>{theme.name}</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="34"
+                        value={strengthsOrder[theme.name] || ""}
+                        placeholder="Enter rank (1-34)"
+                        onChange={(e) => handleStrengthChange(theme.name, parseInt(e.target.value, 10))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={updateStrengths.isPending || isProcessing}
+            >
+              {updateStrengths.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
               ) : (
-                <UploadCloud className="h-4 w-4" />
+                'Save Changes'
               )}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Upload an Excel file containing your strength rankings
-          </p>
-        </div>
+        </DialogContent>
+      </Dialog>
 
-        <div className="grid grid-cols-2 gap-4 py-4">
-          {DOMAIN_CATEGORIES.map((domain) => (
-            <div key={domain} className="space-y-2">
-              <div className="text-center border-b border-gray-200 pb-2">
-                <h2 className="text-sm font-semibold tracking-wider uppercase">
-                  {domain}
-                  <span className="text-xs align-top ml-0.5">®</span>
-                </h2>
-              </div>
-              <div className="space-y-1">
-                {THEMES[domain].map((theme) => (
-                  <div key={theme.name} className="mb-2">
-                    <Label>{theme.name}</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="34"
-                      value={strengthsOrder[theme.name] || ""}
-                      placeholder="Enter rank (1-34)"
-                      onChange={(e) => {
-                        const newValue = parseInt(e.target.value, 10);
-                        if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
-                          setStrengthsOrder((prev) => ({
-                            ...prev,
-                            [theme.name]: newValue,
-                          }));
-                        }
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Button 
-            onClick={handleSubmit} 
-            disabled={updateStrengths.isPending || isProcessing}
-          >
-            {updateStrengths.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              'Save Changes'
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to close without saving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelClose}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmClose}>Close Without Saving</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
