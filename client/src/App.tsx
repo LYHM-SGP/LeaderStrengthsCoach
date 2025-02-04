@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Strengths from "@/pages/strengths";
 import Coaching from "@/pages/coaching";
 import Shop from "@/pages/shop";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <ProtectedRoute path="/strengths" component={Strengths} />
       <ProtectedRoute path="/coaching" component={Coaching} />
       <ProtectedRoute path="/shop" component={Shop} />
+      <ProtectedRoute path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );

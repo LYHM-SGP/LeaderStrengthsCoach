@@ -23,8 +23,8 @@ export default function Profile() {
                   <dd className="text-muted-foreground mt-1">{user?.fullName}</dd>
                 </div>
                 <div>
-                  <dt className="font-medium text-lg">Email</dt>
-                  <dd className="text-muted-foreground mt-1">{user?.email}</dd>
+                  <dt className="font-medium text-lg">Username</dt>
+                  <dd className="text-muted-foreground mt-1">{user?.username}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-lg">Role</dt>
@@ -32,16 +32,16 @@ export default function Profile() {
                 </div>
                 <div>
                   <dt className="font-medium text-lg">Title</dt>
-                  <dd className="text-muted-foreground mt-1">{user?.title}</dd>
+                  <dd className="text-muted-foreground mt-1">{user?.title || 'Not set'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-lg">Organization</dt>
-                  <dd className="text-muted-foreground mt-1">{user?.organization}</dd>
+                  <dd className="text-muted-foreground mt-1">{user?.organization || 'Not set'}</dd>
                 </div>
                 <div>
                   <dt className="font-medium text-lg">Account Created</dt>
                   <dd className="text-muted-foreground mt-1">
-                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
+                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Not available'}
                   </dd>
                 </div>
               </dl>
