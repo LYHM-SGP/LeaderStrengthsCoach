@@ -17,11 +17,6 @@ const THEMES = {
   'STRATEGIC THINKING': ['Analytical', 'Context', 'Futuristic', 'Ideation', 'Input', 'Intellection', 'Learner', 'Strategic']
 } as const;
 
-interface Ranking {
-  rank: number;
-  name: string;
-}
-
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -187,49 +182,41 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update the LinkedIn feed route to be simpler
+  // LinkedIn feed route - simplified to just fetch posts
   app.get("/api/linkedin-feed", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      // Basic LinkedIn API call first to test connectivity
+      // Fetch user's LinkedIn posts using v2 API
       const response = await fetch(
-        'https://api.linkedin.com/v2/me',
+        'https://api.linkedin.com/v2/posts?author=urn:li:person:me',
         {
           headers: {
             'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
-            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202401',
           }
         }
       );
 
       if (!response.ok) {
-        throw new Error(`LinkedIn API connection failed: ${response.status}`);
+        throw new Error(`LinkedIn API error: ${response.status}`);
       }
 
-      // If basic connection works, get the posts
-      const postsResponse = await fetch(
-        'https://api.linkedin.com/v2/ugcPosts',
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-            'Content-Type': 'application/json',
-          }
+      const data = await response.json();
+      const posts = data.elements || [];
+
+      res.json(posts.map(post => ({
+        id: post.id,
+        message: post.commentary || post.content || '',
+        created: {
+          time: new Date(post.created.time).getTime()
         }
-      );
-
-      if (!postsResponse.ok) {
-        throw new Error('Failed to fetch LinkedIn posts');
-      }
-
-      const data = await postsResponse.json();
-      res.json(data.elements || []);
+      })));
     } catch (error) {
       console.error('LinkedIn feed error:', error);
       res.status(500).json({ 
-        message: "Failed to fetch LinkedIn feed", 
-        details: error instanceof Error ? error.message : 'Unknown error'
+        message: "Failed to fetch LinkedIn posts", 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });

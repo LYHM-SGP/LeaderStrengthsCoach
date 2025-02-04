@@ -19,15 +19,15 @@ export default function Resources() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: feed, isLoading, error } = useQuery<LinkedInPost[]>({
+  const { data: posts, isLoading, error } = useQuery<LinkedInPost[]>({
     queryKey: ["/api/linkedin-feed"],
     onError: (error: Error) => {
       toast({
-        title: "Error loading LinkedIn feed",
+        title: "Error loading LinkedIn posts",
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
 
   const formatDate = (timestamp: number) => {
@@ -45,9 +45,9 @@ export default function Resources() {
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold">Resources</h1>
+              <h1 className="text-3xl font-bold">My LinkedIn Content</h1>
               <p className="text-muted-foreground mt-2">
-                Latest insights and thoughts on CliftonStrengths coaching
+                Latest posts and articles from LinkedIn
               </p>
             </div>
           </div>
@@ -59,24 +59,24 @@ export default function Resources() {
           ) : error ? (
             <Card className="bg-destructive/10 border-destructive">
               <CardHeader>
-                <CardTitle>Unable to load LinkedIn feed</CardTitle>
+                <CardTitle>Unable to load LinkedIn content</CardTitle>
                 <CardDescription>
                   {error instanceof Error ? error.message : 'Please try again later'}
                 </CardDescription>
               </CardHeader>
             </Card>
-          ) : !feed?.length ? (
+          ) : !posts?.length ? (
             <Card>
               <CardHeader>
                 <CardTitle>No posts found</CardTitle>
                 <CardDescription>
-                  No LinkedIn posts are currently available. Please check back later.
+                  No LinkedIn posts are currently available.
                 </CardDescription>
               </CardHeader>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {feed.map((post) => (
+              {posts.map((post) => (
                 <Card key={post.id} className="flex flex-col">
                   <CardHeader>
                     <div className="flex items-center space-x-2 mb-2">
@@ -96,11 +96,11 @@ export default function Resources() {
                   <div className="p-6 pt-0">
                     <Button
                       variant="outline"
-                      className="w-full"
+                      className="w-full gap-2"
                       onClick={() => window.open(`https://www.linkedin.com/feed/update/${post.id}`, '_blank')}
                     >
-                      Read on LinkedIn
-                      <ExternalLink className="ml-2 h-4 w-4" />
+                      View on LinkedIn
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </div>
                 </Card>
