@@ -12,6 +12,37 @@ interface QwenResponse {
   };
 }
 
+interface InteractionPattern {
+  phase: ConversationPhase;
+  sentiment: number;
+  effectiveness: number;
+  approach: string;
+}
+
+// Cache to store successful interaction patterns
+let interactionPatterns: InteractionPattern[] = [];
+
+// Track effectiveness of different coaching approaches
+function updateInteractionPattern(phase: ConversationPhase, sentiment: number, effectiveness: number, approach: string) {
+  interactionPatterns.push({ phase, sentiment, effectiveness, approach });
+  // Keep only recent patterns
+  if (interactionPatterns.length > 100) {
+    interactionPatterns = interactionPatterns.slice(-100);
+  }
+}
+
+// Get most effective approach for current phase and sentiment
+function getEffectiveApproach(phase: ConversationPhase, sentiment: number): string {
+  const relevantPatterns = interactionPatterns
+    .filter(p => p.phase === phase)
+    .sort((a, b) => b.effectiveness - a.effectiveness);
+
+  if (relevantPatterns.length > 0) {
+    return relevantPatterns[0].approach;
+  }
+  return '';
+}
+
 export async function callQwenApi(prompt: string): Promise<string> {
   try {
     console.log('Calling Qwen API with prompt:', prompt);
@@ -51,7 +82,8 @@ Remember to:
 - Avoid making lists or using bullet points
 - Keep the conversation going without being the one to end it
 - Focus on the client's growth and insights
-- Maintain strong ethical boundaries`
+- Maintain strong ethical boundaries
+- Learn and adapt coaching style based on client preferences and responses`
             },
             { role: 'user', content: prompt }
           ]
@@ -132,6 +164,13 @@ export async function generateCoachingResponse(
       console.log('Ethical concerns detected, switching to ethics agent');
     }
 
+    // Get sentiment score from context
+    const sentiment = context.sentiment || 0;
+
+    // Get effective approach based on historical patterns
+    const effectiveApproach = getEffectiveApproach(currentPhase, sentiment);
+    console.log('Using effective approach:', effectiveApproach);
+
     // Create a coaching prompt that includes context, phase, and strengths
     const promptWithContext = `
 Phase: ${currentPhase}
@@ -142,6 +181,7 @@ ${currentPhase === 'strengths' ? `Client's top strengths:\n${strengths}` : ''}
 
 ${context.detectedEmotions?.length ? `Detected emotions: ${context.detectedEmotions.join(', ')}` : ''}
 ${context.keyTopics?.length ? `Key topics discussed: ${context.keyTopics.join(', ')}` : ''}
+${effectiveApproach ? `Previous successful approach: ${effectiveApproach}` : ''}
 
 ${COACHING_AGENTS[currentPhase].prompt(message)}
 
@@ -150,9 +190,15 @@ Remember to:
 - Focus on one key question
 - Use empathetic responses
 - Include body language cues in (parentheses)
-${currentPhase === 'ethics' ? '- Prioritize client safety and well-being\n- Provide appropriate referrals when needed' : ''}`;
+${currentPhase === 'ethics' ? '- Prioritize client safety and well-being\n- Provide appropriate referrals when needed' : ''}
+- Adapt to client's previous responses and preferences`;
 
     const response = await callQwenApi(promptWithContext);
+
+    // Update interaction pattern with current approach
+    // Note: Effectiveness score would be updated later based on user engagement
+    updateInteractionPattern(currentPhase, sentiment, 1, response);
+
     return response;
   } catch (error) {
     console.error('Error generating coaching response:', error);

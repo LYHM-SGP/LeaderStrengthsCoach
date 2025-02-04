@@ -10,7 +10,7 @@ import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COACHING_AGENTS } from './coaching/standards';
-import { generateCoachingResponse } from './lib/openai'; // Updated import statement
+import { generateCoachingResponse } from './lib/openai';
 import sentiment from 'sentiment';
 
 // Updated sentiment analyzer setup
@@ -40,6 +40,13 @@ type CoachingAgent = 'exploration' | 'goalSetting' | 'reflection' | 'challenge';
 interface CoachingAgentDefinition {
   name: string;
   prompt: (message: string, context: string) => string;
+}
+
+interface CoachingInteraction {
+  messageLength: number;
+  responseTime: number;
+  followUpCount: number;
+  sentimentChange: number;
 }
 
 export function registerRoutes(app: Express): Server {
@@ -211,17 +218,16 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/ai-coaching", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { message, conversationId } = req.body;
+    const { message, conversationId, previousInteractionId } = req.body;
     const userId = req.user.id;
 
     try {
-      // Get user's strengths for context, properly ordered by score ascending (1=highest rank)
+      // Get user's strengths for context
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
         orderBy: [asc(strengths.score)],
       });
 
-      // Format strengths for context, ensuring correct ranking order (1-10)
       const topStrengths = userStrengths
         .slice(0, 10)
         .map((s, index) => `${index + 1}. ${s.name}`)
@@ -234,10 +240,37 @@ export function registerRoutes(app: Express): Server {
         limit: 5,
       });
 
-      // Perform sentiment analysis on the current message
+      // Analyze current sentiment
       const currentSentiment = sentimentAnalyzer.analyze(message);
 
-      // Build conversation context and agent prompts
+      // If there's a previous interaction, analyze its effectiveness
+      if (previousInteractionId) {
+        const previousNote = recentNotes.find(n => n.id === previousInteractionId);
+        if (previousNote) {
+          const interaction: CoachingInteraction = {
+            messageLength: message.length,
+            responseTime: Date.now() - new Date(previousNote.createdAt!).getTime(),
+            followUpCount: recentNotes.length,
+            sentimentChange: currentSentiment.score - (previousNote.tags.sentiment || 0)
+          };
+
+          // Calculate effectiveness score (0-1)
+          const effectivenessScore = calculateEffectiveness(interaction);
+          console.log('Interaction effectiveness score:', effectivenessScore);
+
+          // Store the effectiveness score in the previous note's tags
+          await db.update(coachingNotes)
+            .set({
+              tags: {
+                ...previousNote.tags,
+                effectiveness: effectivenessScore
+              }
+            })
+            .where(eq(coachingNotes.id, previousInteractionId));
+        }
+      }
+
+      // Build conversation context
       const conversationContext = {
         recentMessages: recentNotes.map(note => {
           const { question, answer } = parseNoteContent(note.content);
@@ -251,28 +284,28 @@ export function registerRoutes(app: Express): Server {
             {
               role: 'assistant' as const,
               content: answer,
-              timestamp: note.createdAt!
+              timestamp: note.createdAt!,
+              effectiveness: note.tags.effectiveness
             }
           ];
         }).flat(),
         detectedEmotions: getEmotionsFromSentiment(currentSentiment),
-        keyTopics: extractKeyTopics(recentNotes)
+        keyTopics: extractKeyTopics(recentNotes),
+        sentiment: currentSentiment.score
       };
 
       try {
-        // Generate response using OpenAI with properly ranked strengths context
         const aiResponse = await generateCoachingResponse(
           message,
           topStrengths,
           conversationContext
         );
 
-        // Use today's date as conversation ID if none provided
         const today = new Date();
         const dateId = today.toISOString().split('T')[0];
         const actualConversationId = conversationId || dateId;
 
-        // Store the conversation in coaching notes with sentiment
+        // Store the conversation
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session",
@@ -281,7 +314,8 @@ export function registerRoutes(app: Express): Server {
           tags: {
             strengths: topStrengths,
             sentiment: currentSentiment.score,
-            emotions: conversationContext.detectedEmotions
+            emotions: conversationContext.detectedEmotions,
+            previousInteractionId
           }
         }).returning();
 
@@ -295,7 +329,7 @@ export function registerRoutes(app: Express): Server {
         });
       } catch (error) {
         console.error('AI Coaching error:', error);
-        // Create a fallback note
+        // Create fallback note
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session (Fallback)",
@@ -395,4 +429,37 @@ function extractKeyTopics(notes: typeof coachingNotes.$inferSelect[]) {
     });
   });
   return Array.from(topics);
+}
+
+function calculateEffectiveness(interaction: CoachingInteraction): number {
+  // Calculate effectiveness score based on multiple factors
+
+  // 1. Message length (longer responses indicate engagement)
+  const lengthScore = Math.min(interaction.messageLength / 100, 1); // Normalize to 0-1
+
+  // 2. Response time (quicker responses indicate engagement)
+  const responseTimeScore = Math.max(1 - (interaction.responseTime / (5 * 60 * 1000)), 0); // 5 minutes max
+
+  // 3. Follow-up consistency
+  const followUpScore = Math.min(interaction.followUpCount / 5, 1);
+
+  // 4. Sentiment improvement
+  const sentimentScore = (interaction.sentimentChange + 1) / 2; // Normalize -1 to 1 range to 0-1
+
+  // Weight the factors (adjust weights based on importance)
+  const weights = {
+    length: 0.25,
+    responseTime: 0.25,
+    followUp: 0.25,
+    sentiment: 0.25
+  };
+
+  // Calculate weighted average
+  const effectivenessScore =
+    (lengthScore * weights.length) +
+    (responseTimeScore * weights.responseTime) +
+    (followUpScore * weights.followUp) +
+    (sentimentScore * weights.sentiment);
+
+  return effectivenessScore;
 }

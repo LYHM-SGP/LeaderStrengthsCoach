@@ -34,6 +34,7 @@ export default function AiCoaching() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
+  const [previousInteractionId, setPreviousInteractionId] = useState<number | null>(null);
 
   const { data: notes } = useQuery<SelectNote[]>({
     queryKey: ["/api/notes"],
@@ -47,7 +48,8 @@ export default function AiCoaching() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          conversationId: activeConversationId
+          conversationId: activeConversationId,
+          previousInteractionId
         }),
       });
       if (!res.ok) {
@@ -58,6 +60,7 @@ export default function AiCoaching() {
     },
     onSuccess: (data) => {
       setMessage("");
+      setPreviousInteractionId(data.note.id);
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
     },
     onError: (error: Error) => {
@@ -87,6 +90,7 @@ export default function AiCoaching() {
         description: "Your coaching conversation history has been cleared.",
       });
       setActiveConversationId(null);
+      setPreviousInteractionId(null);
     },
     onError: (error: Error) => {
       toast({
