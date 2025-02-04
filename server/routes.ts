@@ -90,7 +90,7 @@ export function registerRoutes(app: Express): Server {
 
     const notes = await db.query.coachingNotes.findMany({
       where: eq(coachingNotes.userId, req.user.id),
-      orderBy: [desc(notes.updatedAt)],
+      orderBy: [desc(coachingNotes.createdAt)],
     });
 
     res.json(notes);
