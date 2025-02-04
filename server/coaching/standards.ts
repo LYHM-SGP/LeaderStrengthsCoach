@@ -8,9 +8,6 @@ export const COACHING_AGENTS = {
     name: "Progression Agent",
     description: "Determines when to progress conversation phases",
     analyzeContext: (messages: any[], currentPhase: ConversationPhase) => {
-      let hasSharedEmotions = false;
-      let showsFrustration = false;
-      let negativeEmotionCount = 0;
       let lastQuestion = '';
       let similarQuestions = 0;
 
@@ -26,37 +23,25 @@ export const COACHING_AGENTS = {
           }
         }
 
-        // Check for negative emotions specifically
-        const negativeEmotions = ['angry', 'sad', 'betrayed', 'hurt', 'unfair', 'lonely', 'dread'];
-        negativeEmotions.forEach(emotion => {
-          if (content.includes(emotion)) {
-            hasSharedEmotions = true;
-            negativeEmotionCount++;
-          }
-        });
-
         // Check for frustration with conversation
         if (content.includes('enough') || content.includes('already told') ||
             content.includes('again') || content.includes('what?')) {
-          showsFrustration = true;
+          return 'goalsetting';
         }
       });
 
       // Move to goal setting immediately if:
-      // 1. Multiple negative emotions expressed
+      // 1. Direct action statements
       // 2. Shows frustration with conversation
       // 3. Similar questions asked repeatedly
-      if (negativeEmotionCount >= 2 || showsFrustration || similarQuestions >= 2) {
+      if (similarQuestions >= 2) {
         return 'goalsetting';
       }
 
-      // Quick phase progression for clear negative emotions
+      // Quick phase progression for clear actions
       switch(currentPhase) {
         case 'exploration':
-          if (hasSharedEmotions) {
-            return 'goalsetting';
-          }
-          break;
+          return 'goalsetting';
         case 'understanding':
           return 'goalsetting';
         case 'goalsetting':
@@ -70,7 +55,7 @@ export const COACHING_AGENTS = {
   exploration: {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
-    prompt: (context: string) => `
+    prompt: (message: string) => `
 (Leaning forward) What would you like to see change in this situation?
 
 Remember to:
@@ -83,7 +68,7 @@ Remember to:
   understanding: {
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
-    prompt: (context: string) => `
+    prompt: (message: string) => `
 (Nodding thoughtfully) What specific changes would help improve this situation?
 
 Remember to:
@@ -96,7 +81,7 @@ Remember to:
   goalSetting: {
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
-    prompt: (context: string) => `
+    prompt: (message: string) => `
 (Making eye contact) What's the most important thing you'd like to address first?
 
 Remember to:
@@ -109,7 +94,7 @@ Remember to:
   strengths: {
     name: "Strengths Integration Agent",
     description: "Uses strengths to support client's goals",
-    prompt: (context: string) => `
+    prompt: (message: string) => `
 (Showing interest) How can we use your abilities to address this?
 
 Remember to:
