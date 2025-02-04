@@ -69,6 +69,23 @@ export default function Strengths() {
     .map(s => s.name)
     .join(" | ");
 
+  const getThemeColor = (domain: string, rank: number) => {
+    const isTop10 = rank <= 10;
+
+    switch (domain) {
+      case 'STRATEGIC THINKING':
+        return isTop10 ? 'bg-emerald-600 text-white' : 'bg-emerald-50';
+      case 'RELATIONSHIP BUILDING':
+        return isTop10 ? 'bg-blue-600 text-white' : 'bg-blue-50';
+      case 'INFLUENCING':
+        return isTop10 ? 'bg-orange-500 text-white' : 'bg-orange-50';
+      case 'EXECUTING':
+        return isTop10 ? 'bg-purple-600 text-white' : 'bg-purple-50';
+      default:
+        return 'bg-gray-50';
+    }
+  };
+
   return (
     <div className="min-h-screen flex">
       <Sidebar />
@@ -101,21 +118,7 @@ export default function Strengths() {
                     return (
                       <div
                         key={theme.name}
-                        className={`p-2.5 rounded ${
-                          domain === 'STRATEGIC THINKING'
-                            ? rank <= 10
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-emerald-50'
-                            : domain === 'RELATIONSHIP BUILDING'
-                            ? 'bg-blue-50'
-                            : domain === 'INFLUENCING'
-                            ? rank <= 10
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-orange-50'
-                            : rank <= 10
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-purple-50'
-                        }`}
+                        className={`p-2.5 rounded ${getThemeColor(domain, rank)}`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="text-sm">
