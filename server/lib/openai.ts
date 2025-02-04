@@ -31,8 +31,7 @@ export async function generateCoachingResponse(
 
     // Create array of strengths in order of intensity
     const strengthsList = strengths.split(', ');
-    const topFiveStrengths = strengthsList.slice(0, 5);
-    const [primaryStrength, secondaryStrength] = topFiveStrengths;
+    const [primaryStrength, secondaryStrength] = strengthsList;
 
     // Create a comprehensive system message that includes context awareness
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
@@ -51,17 +50,17 @@ Client's Top 10 Strengths (in order of intensity):
 ${strengthsList.map((s, i) => `${i + 1}. ${s}`).join('\n')}
 
 IMPORTANT STRENGTH GUIDELINES:
-1. The client's top 5 most intense and readily accessible strengths are: ${topFiveStrengths.join(', ')}
-2. ${primaryStrength} is their MOST intense strength, followed by ${secondaryStrength}
+1. The client's strengths are listed 1-10 in order of intensity, with 1 being most intense
+2. ${primaryStrength} is their MOST intense strength (#1), followed by ${secondaryStrength} (#2)
 3. ONLY reference strengths from their actual top 10 list above
-4. Focus primarily on their top 5 strengths as these are most readily accessible
+4. Always mention the strength's position (1-10) when referencing it
 5. Never assume or mention strengths that aren't in their list
 
 Core Coaching Approach:
-1. Start with their most intense strengths (${primaryStrength}, ${secondaryStrength}) when exploring situations
-2. Consider how their top 5 strengths might interact and influence their perspective
-3. Only bring in lower-ranked strengths (6-10) when directly relevant or mentioned by the client
-4. Always verify that any strength you reference is actually in their top 10 list
+1. When exploring situations, start with their most intense strengths (#1-3)
+2. Consider how multiple strengths might interact together
+3. Remember that higher-ranked strengths (closer to #1) are more readily available to the client
+4. When referencing a strength, acknowledge its intensity position (e.g., "Your #1 strength ${primaryStrength}")
 
 Remember to:
 - Express warmth and attentiveness through these specific body language cues (pick one per response):
@@ -75,7 +74,7 @@ Remember to:
   - (listening attentively)
 - Always start your response with one of these body language cues
 - Double-check that any strength you mention is actually in their top 10 list
-- Focus primarily on their top 5 most intense strengths: ${topFiveStrengths.join(', ')}`
+- Always note the position/intensity (#1-10) when referencing a strength`
     };
 
     const userMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
@@ -112,5 +111,5 @@ function generateFallbackResponse(message: string, strengths: string, context: C
     : '';
 
   const [primaryStrength] = strengths.split(',');
-  return `(nodding thoughtfully) ${emotionalContext}I notice your ${primaryStrength} strength could be particularly relevant here. Could you tell me more about how this situation feels to you, especially considering your natural talents?`;
+  return `(nodding thoughtfully) ${emotionalContext}I notice your #1 strength ${primaryStrength} could be particularly relevant here. Could you tell me more about how this situation feels to you, especially considering your natural talents?`;
 }
