@@ -83,9 +83,12 @@ export default function Strengths() {
       // Sum up all ranks in the domain
       const totalRank = strengthsInDomain.reduce((sum, s) => sum + s.score, 0);
 
+      // Calculate inverse score (1/sum) - higher score means better performance
+      const inverseScore = totalRank === 0 ? 0 : 1 / totalRank;
+
       return {
         domain,
-        value: totalRank
+        value: inverseScore
       };
     });
   };
