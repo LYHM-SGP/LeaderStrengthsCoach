@@ -59,9 +59,7 @@ Remember to:
   - (listening attentively)
 - Always start your response with one of these body language cues
 - Keep the conversation flowing naturally
-- Focus on the client's growth and insights
-
-Context: The client's top strengths are ${strengths}`
+- Focus on the client's growth and insights`
         },
         {
           role: "user",

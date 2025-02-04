@@ -10,6 +10,8 @@ import { Loader2, Send, Bot, User, Plus } from "lucide-react";
 import type { SelectNote } from "@db/schema";
 
 interface ConversationGroup {
+  id: string;
+  title: string;
   date: string;
   notes: SelectNote[];
 }
@@ -18,10 +20,11 @@ export default function AiCoaching() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
 
-  const { data: conversations, isLoading: isLoadingConversations } = useQuery<SelectNote[]>({
+  const { data: notes } = useQuery<SelectNote[]>({
     queryKey: ["/api/notes"],
     refetchInterval: 1000, // Poll every second for new messages
   });
@@ -31,7 +34,10 @@ export default function AiCoaching() {
       const res = await fetch("/api/ai-coaching", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ 
+          message,
+          conversationId: activeConversationId || new Date().toISOString()
+        }),
       });
       if (!res.ok) {
         const error = await res.text();
@@ -88,51 +94,61 @@ export default function AiCoaching() {
         'listening attentively': '👂',
       };
 
-      // Find the closest matching emoji or use a default
-      const emoji = Object.entries(emojiMap).find(([key]) => 
+      return Object.entries(emojiMap).find(([key]) => 
         action.toLowerCase().includes(key.toLowerCase())
       )?.[1] || '🤖';
-
-      return emoji;
     });
   };
 
-  // Group conversations by date
-  const groupConversations = (notes: SelectNote[] = []): ConversationGroup[] => {
+  // Group notes into conversations
+  const conversations = React.useMemo(() => {
+    if (!notes) return [];
+
     const groups: Record<string, SelectNote[]> = {};
-
     notes.forEach(note => {
-      const date = new Date(note.createdAt!).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      if (!groups[date]) {
-        groups[date] = [];
+      const conversationId = note.conversationId || note.createdAt;
+      if (!groups[conversationId]) {
+        groups[conversationId] = [];
       }
-      groups[date].push(note);
+      groups[conversationId].push(note);
     });
 
-    return Object.entries(groups).map(([date, notes]) => ({
-      date,
-      notes: notes.sort((a, b) => 
-        new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime()
-      )
-    })).sort((a, b) => 
-      new Date(b.notes[0].createdAt!).getTime() - new Date(a.notes[0].createdAt!).getTime()
-    );
-  };
+    return Object.entries(groups).map(([id, notes]) => {
+      const date = new Date(notes[0].createdAt!);
+      return {
+        id,
+        title: `Coaching Session ${date.toLocaleDateString()}`,
+        date: date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+        notes: notes.sort((a, b) => 
+          new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime()
+        )
+      };
+    }).sort((a, b) => new Date(b.notes[0].createdAt!).getTime() - new Date(a.notes[0].createdAt!).getTime());
+  }, [notes]);
 
-  // Start new conversation by clearing the message history
+  // Start new conversation
   const startNewConversation = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+    const newId = new Date().toISOString();
+    setActiveConversationId(newId);
     textareaRef.current?.focus();
     toast({
       title: "New Conversation Started",
       description: "What would you like to discuss?",
     });
   };
+
+  // Set the first conversation as active by default
+  useEffect(() => {
+    if (conversations.length > 0 && !activeConversationId) {
+      setActiveConversationId(conversations[0].id);
+    }
+  }, [conversations, activeConversationId]);
+
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   return (
     <div className="min-h-screen flex">
@@ -150,130 +166,135 @@ export default function AiCoaching() {
             </Button>
           </div>
 
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-6 w-6 text-primary" />
-                  Chat with Your ICF PCC Certified AI Coach
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <Textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Share your thoughts or ask questions about leveraging your strengths..."
-                    className="min-h-[100px]"
-                    disabled={coachingMutation.isPending}
-                  />
+          <div className="grid grid-cols-4 gap-6">
+            {/* Conversations List */}
+            <div className="space-y-4">
+              <h2 className="font-semibold text-lg">Conversations</h2>
+              <div className="space-y-2">
+                {conversations.map((conversation) => (
                   <Button
-                    type="submit"
-                    disabled={coachingMutation.isPending || !message.trim()}
-                    className="w-full"
+                    key={conversation.id}
+                    variant={conversation.id === activeConversationId ? "secondary" : "ghost"}
+                    className="w-full justify-start text-left"
+                    onClick={() => setActiveConversationId(conversation.id)}
                   >
-                    {coachingMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Coach is thinking...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        Send Message
-                      </>
-                    )}
+                    <div>
+                      <div className="font-medium">{conversation.title}</div>
+                      <div className="text-xs text-muted-foreground">{conversation.date}</div>
+                    </div>
                   </Button>
-                </form>
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Coaching History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingConversations ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : !conversations?.length ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    No conversations yet. Start by sending a message above.
-                  </p>
-                ) : (
-                  <div className="space-y-8">
-                    {groupConversations(conversations).map((group) => (
-                      <div key={group.date} className="space-y-6">
-                        <h3 className="font-semibold text-lg border-b pb-2">
-                          {group.date}
-                        </h3>
-                        <div className="space-y-6">
-                          {group.notes.map((note) => {
-                            const { question, answer } = formatMessage(note.content);
-                            return (
-                              <div key={note.id} className="space-y-4">
-                                {/* User message */}
-                                <div className="flex items-start gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                    <User className="h-5 w-5" />
+            {/* Active Conversation */}
+            <div className="col-span-3 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bot className="h-6 w-6 text-primary" />
+                    {activeConversation?.title || "New Coaching Session"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <Textarea
+                      ref={textareaRef}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="Share your thoughts or ask questions about leveraging your strengths..."
+                      className="min-h-[100px]"
+                      disabled={coachingMutation.isPending}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={coachingMutation.isPending || !message.trim()}
+                      className="w-full gap-2"
+                    >
+                      {coachingMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Coach is thinking...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          Send Message
+                        </>
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-8 space-y-6">
+                    {!activeConversation?.notes.length ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        No messages yet. Start by sending a message above.
+                      </p>
+                    ) : (
+                      activeConversation.notes.map((note) => {
+                        const { question, answer } = formatMessage(note.content);
+                        return (
+                          <div key={note.id} className="space-y-4">
+                            {/* User message */}
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                <User className="h-5 w-5" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="bg-muted/50 rounded-lg p-4">
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                    {question}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Coach response */}
+                            {answer && (
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <Bot className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="bg-primary/10 rounded-lg p-4">
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {formatResponse(answer)}
+                                    </p>
                                   </div>
-                                  <div className="flex-1">
-                                    <div className="bg-muted/50 rounded-lg p-4">
-                                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                        {question}
-                                      </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(note.createdAt!).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Loading state for pending response */}
+                            {coachingMutation.isPending && 
+                             note === activeConversation.notes[activeConversation.notes.length - 1] && 
+                             !answer && (
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <Bot className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="bg-primary/10 rounded-lg p-4">
+                                    <div className="flex items-center gap-2">
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <p className="text-sm">Coach is thinking...</p>
                                     </div>
                                   </div>
                                 </div>
-
-                                {/* Coach response */}
-                                {answer && (
-                                  <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <Bot className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="bg-primary/10 rounded-lg p-4">
-                                        <p className="text-sm whitespace-pre-wrap">
-                                          {formatResponse(answer)}
-                                        </p>
-                                      </div>
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        {new Date(note.createdAt!).toLocaleTimeString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Loading state for pending response */}
-                                {coachingMutation.isPending && note === group.notes[0] && !answer && (
-                                  <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                      <Bot className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="bg-primary/10 rounded-lg p-4">
-                                        <div className="flex items-center gap-2">
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                          <p className="text-sm">Coach is thinking...</p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>
