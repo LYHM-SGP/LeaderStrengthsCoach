@@ -72,15 +72,20 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     const { productId } = req.body;
-    const [product] = await db.query.products.findMany({
-      where: eq(products.id, productId),
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
 
     try {
+      const [product] = await db.query.products.findMany({
+        where: eq(products.id, productId),
+      });
+
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      if (!product.stripePriceId) {
+        return res.status(400).json({ message: "Invalid product configuration" });
+      }
+
       const session = await createCheckoutSession(
         productId,
         product,
@@ -99,7 +104,11 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ sessionId: session.id });
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      console.error('Checkout error:', error);
+      res.status(500).json({ 
+        message: "Checkout failed", 
+        details: (error as Error).message 
+      });
     }
   });
 
