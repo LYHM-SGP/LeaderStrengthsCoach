@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { SelectProduct } from "@db/schema";
 import { useAuth } from "@/hooks/use-auth";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { FileText, Calendar, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 declare const Stripe: any;
 
@@ -39,7 +40,7 @@ export default function Shop() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: products, error } = useQuery<SelectProduct[]>({
+  const { data: products } = useQuery<SelectProduct[]>({
     queryKey: ["/api/products"],
   });
 
@@ -53,15 +54,6 @@ export default function Shop() {
       });
     });
   }, [toast]);
-
-  if (error) {
-    toast({
-      title: "Error loading products",
-      description: error.message,
-      variant: "destructive",
-    });
-    return <div>Error loading products</div>;
-  }
 
   const handleCheckout = async (productId: number) => {
     try {
