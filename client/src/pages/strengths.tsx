@@ -70,20 +70,6 @@ export default function Strengths() {
             </p>
           </div>
 
-          {/* DNA-like header graphic */}
-          <div className="w-full h-24 mb-8 relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="relative w-full">
-                <div className="absolute inset-0">
-                  <div className="h-full w-full bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%25%22 height=%22100%25%22%3E%3Cdefs%3E%3ClinearGradient id=%22grad%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%220%25%22%3E%3Cstop offset=%220%25%22 style=%22stop-color:rgb(147,51,234);stop-opacity:0.3%22/%3E%3Cstop offset=%2250%25%22 style=%22stop-color:rgb(16,185,129);stop-opacity:0.3%22/%3E%3Cstop offset=%22100%25%22 style=%22stop-color:rgb(59,130,246);stop-opacity:0.3%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%22M0 24 C 20 24, 20 12, 40 12 S 60 24, 80 24 S 100 12, 120 12%22 stroke=%22url(%23grad)%22 fill=%22none%22 stroke-width=%222%22/%3E%3C/svg%3E')] bg-repeat-x"></div>
-                </div>
-                <div className="relative h-2 bg-gradient-to-r from-purple-500 via-emerald-500 to-blue-500"></div>
-              </div>
-            </div>
-            <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-white to-transparent"></div>
-            <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-white to-transparent"></div>
-          </div>
-
           <div className="grid grid-cols-4 gap-6">
             {DOMAIN_CATEGORIES.map((domain) => (
               <div key={domain} className="space-y-2">
@@ -99,11 +85,17 @@ export default function Strengths() {
                       key={theme.name}
                       className={`p-2.5 rounded ${
                         domain === 'STRATEGIC THINKING'
-                          ? 'bg-emerald-600 text-white'
+                          ? theme.rank <= 10
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-emerald-50'
                           : domain === 'RELATIONSHIP BUILDING'
                           ? 'bg-blue-50'
                           : domain === 'INFLUENCING'
-                          ? 'bg-orange-50'
+                          ? theme.rank <= 10
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-orange-50'
+                          : theme.rank <= 10
+                          ? 'bg-purple-600 text-white'
                           : 'bg-purple-50'
                       }`}
                     >
