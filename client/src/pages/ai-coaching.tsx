@@ -56,8 +56,12 @@ export default function AiCoaching() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setMessage("");
+      // Set the active conversation to the current one
+      if (data.note && data.note.conversationId) {
+        setActiveConversationId(data.note.conversationId);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
     },
     onError: (error: Error) => {
