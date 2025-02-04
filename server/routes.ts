@@ -10,7 +10,7 @@ import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COACHING_AGENTS } from './coaching/standards';
-import { generateCoachingResponse } from './lib/openai';
+import { generateCoachingResponse } from './lib/qwen';
 import sentiment from 'sentiment';
 
 // Updated sentiment analyzer setup
@@ -218,12 +218,12 @@ export function registerRoutes(app: Express): Server {
       // Get user's strengths for context, properly ordered by score ascending (1=highest rank)
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
-        orderBy: [asc(strengths.score)], // Changed to ascending to get correct ranking
+        orderBy: [asc(strengths.score)],
       });
 
       // Format strengths for context, ensuring correct ranking order (1-10)
       const topStrengths = userStrengths
-        .slice(0, 10)  // Get top 10 strengths
+        .slice(0, 10)
         .map((s, index) => `${index + 1}. ${s.name}`)
         .join("\n");
 
@@ -237,7 +237,7 @@ export function registerRoutes(app: Express): Server {
       // Perform sentiment analysis on the current message
       const currentSentiment = sentimentAnalyzer.analyze(message);
 
-      // Build conversation context
+      // Build conversation context and agent prompts
       const conversationContext = {
         recentMessages: recentNotes.map(note => {
           const { question, answer } = parseNoteContent(note.content);
@@ -260,7 +260,7 @@ export function registerRoutes(app: Express): Server {
       };
 
       try {
-        // Generate response using OpenAI with properly ranked strengths context
+        // Generate response using Qwen with properly ranked strengths context
         const aiResponse = await generateCoachingResponse(
           message,
           topStrengths,
@@ -295,7 +295,7 @@ export function registerRoutes(app: Express): Server {
         });
       } catch (error) {
         console.error('AI Coaching error:', error);
-        // Create a fallback note with context
+        // Create a fallback note
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session (Fallback)",
