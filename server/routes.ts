@@ -206,7 +206,7 @@ export function registerRoutes(app: Express): Server {
 
       // Format strengths for context
       const topStrengths = userStrengths
-        .slice(0, 5)
+        .slice(0, 10)  // Changed from 5 to 10 to include top 10 strengths
         .map(s => s.name)
         .join(", ");
 
