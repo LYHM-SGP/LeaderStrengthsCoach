@@ -319,23 +319,10 @@ export default function AiCoaching() {
                           Start by sending a message above.
                         </p>
                       ) : (
-                        [...(activeConversation?.notes || [])].reverse().map((note) => {
+                        [...(activeConversation?.notes || [])].map((note) => {
                           const { question, answer } = formatMessage(note.content);
                           return (
                             <div key={note.id} className="space-y-4">
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                  <User className="h-5 w-5" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="bg-muted/50 rounded-lg p-4">
-                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                      {question}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
                               {answer && (
                                 <div className="flex items-start gap-3">
                                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -353,6 +340,19 @@ export default function AiCoaching() {
                                   </div>
                                 </div>
                               )}
+
+                              <div className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                  <User className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="bg-muted/50 rounded-lg p-4">
+                                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                      {question}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
 
                               {coachingMutation.isPending &&
                                 note === activeConversation.notes[0] &&
