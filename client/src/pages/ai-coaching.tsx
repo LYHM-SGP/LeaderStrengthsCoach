@@ -192,14 +192,15 @@ export default function AiCoaching() {
     });
   };
 
+  // Find the active conversation
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
+
+  // Set the most recent conversation as active by default
   useEffect(() => {
-    // Set the first conversation as active by default
     if (conversations.length > 0 && !activeConversationId) {
       setActiveConversationId(conversations[0].id);
     }
   }, [conversations, activeConversationId]);
-
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   return (
     <div className="min-h-screen flex">
@@ -278,7 +279,7 @@ export default function AiCoaching() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bot className="h-6 w-6 text-primary" />
-                    {activeConversation?.title || "New Coaching Session"}
+                    {activeConversation?.title || "Start a New Conversation"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -314,7 +315,7 @@ export default function AiCoaching() {
                   <div className="mt-8 space-y-6">
                     {!activeConversation?.notes.length ? (
                       <p className="text-center text-muted-foreground py-8">
-                        No messages yet. Start by sending a message above.
+                        Start by sending a message above.
                       </p>
                     ) : (
                       activeConversation.notes.map((note) => {
