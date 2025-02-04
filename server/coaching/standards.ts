@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Add progression states to track conversation phase
-export type ConversationPhase = 'exploration' | 'understanding' | 'goalsetting' | 'strengths';
+export type ConversationPhase = 'exploration' | 'understanding' | 'goalsetting' | 'strengths' | 'ethics';
 
 export const COACHING_AGENTS = {
   progression: {
@@ -13,10 +13,21 @@ export const COACHING_AGENTS = {
       let negativeEmotionCount = 0;
       let lastQuestion = '';
       let similarQuestions = 0;
+      let hasEthicalConcerns = false;
 
       // Analyze recent messages for progression indicators
       messages.forEach(msg => {
         const content = msg.content.toLowerCase();
+
+        // Check for ethical concerns
+        const ethicalKeywords = [
+          'illegal', 'harm', 'suicide', 'self-harm', 'abuse',
+          'violence', 'harassment', 'discrimination', 'fraud'
+        ];
+
+        if (ethicalKeywords.some(keyword => content.includes(keyword))) {
+          hasEthicalConcerns = true;
+        }
 
         // Check for repetitive patterns in questions
         if (msg.role === 'assistant') {
@@ -42,6 +53,11 @@ export const COACHING_AGENTS = {
         }
       });
 
+      // Immediately switch to ethics agent if concerns detected
+      if (hasEthicalConcerns) {
+        return 'ethics';
+      }
+
       // Move to goal setting immediately if:
       // 1. Multiple negative emotions expressed
       // 2. Shows frustration with conversation
@@ -63,10 +79,42 @@ export const COACHING_AGENTS = {
           return 'strengths';
         case 'strengths':
           return currentPhase;
+        case 'ethics':
+          // Stay in ethics phase if ethical concerns persist
+          return hasEthicalConcerns ? 'ethics' : 'exploration';
       }
 
       return currentPhase;
     }
+  },
+
+  ethics: {
+    name: "Ethics Agent",
+    description: "Ensures ethical coaching practices and handles sensitive situations",
+    prompt: (context: string) => `
+(Making eye contact with genuine concern) I want to ensure we handle this situation responsibly and ethically.
+
+Remember to:
+- Prioritize client safety and well-being
+- Maintain professional boundaries
+- Refer to appropriate professionals when needed
+- Follow ICF ethical guidelines
+- Document ethical concerns appropriately
+
+Key principles:
+1. Do no harm
+2. Maintain confidentiality
+3. Respect professional boundaries
+4. Practice within competence
+5. Refer when appropriate
+
+Response Guidelines:
+- Acknowledge the sensitivity of the situation
+- Express appropriate concern
+- Clarify your role and limitations
+- Provide appropriate referrals
+- Document any ethical concerns
+`,
   },
 
   exploration: {
@@ -146,58 +194,8 @@ export const ICF_PCC_STANDARDS = {
   ],
 };
 
-export const COACHING_PROMPTS = {
-  establishAgreement: (context: string) => `
-(Sitting forward with focused attention) Before we begin, I'd like to understand what brings you here today and what would make our conversation meaningful for you.
-
-Let's explore:
-- What's on your mind today?
-- What feelings or thoughts are present?
-- What would you like to explore?
-- What would make this conversation valuable?
-
-How would you like to begin?
-`,
-
-  activeListening: (context: string) => `
-(Maintaining warm eye contact) I'm hearing the importance of this for you, and I'd like to understand more deeply.
-
-Let's explore:
-- What emotions are present as you share this?
-- What values or beliefs are being touched?
-- What aspects feel most significant?
-- What meaning does this hold for you?
-
-Tell me more about your experience with this.
-`,
-
-  powerfulQuestions: (context: string) => `
-(Leaning in with genuine curiosity) As I listen to your story, I'm noticing some interesting themes.
-
-Let's explore deeper:
-- What's at the heart of this for you?
-- How does this connect to what matters most?
-- What new awareness is emerging?
-- What possibilities are you seeing?
-
-What insights are surfacing as we discuss this?
-`,
-
-  facilitateGrowth: (context: string) => `
-(Nodding encouragingly) I notice we've explored several important aspects of your situation.
-
-Let's integrate what's emerging:
-- What new insights have you gained?
-- What's becoming clearer for you?
-- What learning stands out for you?
-- What would you like to explore next?
-
-How would you like to build on these insights?
-`
-};
-
 export const agentSchema = z.object({
-  type: z.enum(["exploration", "understanding", "goalsetting", "strengths"]),
+  type: z.enum(["exploration", "understanding", "goalsetting", "strengths", "ethics"]),
   message: z.string().min(1, "Message is required"),
   context: z.string(),
 });
