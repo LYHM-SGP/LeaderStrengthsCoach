@@ -12,6 +12,8 @@ export const COACHING_AGENTS = {
       let hasSharedImpact = false;
       let hasSharedDesire = false;
       let emotionalDepth = 0;
+      let workImpactShared = false;
+      let performanceConcern = false;
 
       // Analyze recent messages for progression indicators
       messages.forEach(msg => {
@@ -32,6 +34,18 @@ export const COACHING_AGENTS = {
           hasSharedImpact = true;
         }
 
+        // Check for work impact
+        if (content.includes('meeting') || content.includes('work') ||
+            content.includes('performance') || content.includes('office')) {
+          workImpactShared = true;
+        }
+
+        // Check for performance concerns
+        if (content.includes('impression') || content.includes('performance') ||
+            content.includes('boss') || content.includes('peers')) {
+          performanceConcern = true;
+        }
+
         // Check for explicit desire to change or take action
         if (content.includes('want to') || content.includes('wish') || 
             content.includes('would like') || content.includes('need to') ||
@@ -40,23 +54,23 @@ export const COACHING_AGENTS = {
         }
       });
 
-      // More strict phase progression rules
+      // More dynamic phase progression rules
       switch(currentPhase) {
         case 'exploration':
-          // Only move to understanding after sufficient emotional sharing
-          if (hasSharedEmotions && emotionalDepth >= 2) {
+          // Move to understanding if emotions are clear
+          if (hasSharedEmotions) {
             return 'understanding';
           }
           break;
         case 'understanding':
-          // Require both emotional awareness and impact understanding
-          if (hasSharedEmotions && hasSharedImpact && messages.length >= 4) {
+          // Move to goal setting if impact is clear
+          if ((hasSharedImpact || workImpactShared) && performanceConcern) {
             return 'goalsetting';
           }
           break;
         case 'goalsetting':
-          // Only move to strengths after clear desire for change
-          if (hasSharedDesire && hasSharedImpact) {
+          // Move to strengths if clear desire for change
+          if (hasSharedDesire) {
             return 'strengths';
           }
           break;
@@ -84,7 +98,7 @@ Remember to:
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) How is this situation affecting you?
+(Nodding thoughtfully) How is this affecting your work life?
 
 Remember to:
 - Surface patterns and insights
@@ -98,7 +112,7 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) What would you like to see change in this situation?
+(Leaning forward with interest) Given what you've shared about this situation's impact on your work, what would you like to see change?
 
 Remember to:
 - Focus on client's desires
