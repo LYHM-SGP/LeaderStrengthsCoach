@@ -77,8 +77,10 @@ export default function StrengthOrderForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/strengths"] });
-      setOpen(false);
-      form.reset();
+      toast({
+        title: "Strengths updated",
+        description: "Your strengths order has been saved successfully.",
+      });
     },
     onError: (error) => {
       toast({
@@ -130,8 +132,8 @@ export default function StrengthOrderForm() {
                   const themeNumber = parseInt(match[1]);
                   const strengthName = dataRow[i];
 
-                  if (themeNumber >= 1 && themeNumber <= 34 && 
-                      typeof strengthName === 'string' && 
+                  if (themeNumber >= 1 && themeNumber <= 34 &&
+                      typeof strengthName === 'string' &&
                       INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
                     newRankings[strengthName] = themeNumber;
                   }

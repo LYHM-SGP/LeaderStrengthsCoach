@@ -81,9 +81,7 @@ export default function Strengths() {
                 {topStrengths || "No strengths data available"}
               </p>
             </div>
-            {(!strengths || strengths.length === 0) && (
-              <StrengthOrderForm />
-            )}
+            <StrengthOrderForm />
           </div>
 
           <div className="grid grid-cols-4 gap-6">
