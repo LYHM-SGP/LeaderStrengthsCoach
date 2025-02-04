@@ -90,41 +90,7 @@ export default function StrengthOrderForm() {
     try {
       setIsProcessing(true);
 
-      if (file.name.endsWith(".pdf")) {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/upload-strength-rankings', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to process PDF file');
-        }
-
-        const data = await response.json();
-        if (!data.rankings || !Array.isArray(data.rankings) || data.rankings.length === 0) {
-          throw new Error('No valid rankings found in PDF');
-        }
-
-        const newRankings: Record<string, number> = {};
-        data.rankings.forEach((ranking: { rank: number; name: string }) => {
-          if (INITIAL_RANKINGS.hasOwnProperty(ranking.name)) {
-            newRankings[ranking.name] = ranking.rank;
-          }
-        });
-
-        if (Object.keys(newRankings).length > 0) {
-          setStrengthsOrder(prev => ({ ...prev, ...newRankings }));
-          toast({
-            title: "PDF processed",
-            description: `Updated ${Object.keys(newRankings).length} strength rankings from the PDF file.`,
-          });
-        } else {
-          throw new Error('No valid strength rankings found in the PDF');
-        }
-      } else if (file.name.endsWith(".xlsx")) {
+      if (file.name.endsWith(".xlsx")) {
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
@@ -214,12 +180,12 @@ export default function StrengthOrderForm() {
         </DialogHeader>
 
         <div className="mb-6 p-4 border rounded-lg bg-secondary/20">
-          <Label htmlFor="file-upload" className="block mb-2">Upload Rankings File</Label>
+          <Label htmlFor="file-upload" className="block mb-2">Upload Rankings Excel File</Label>
           <div className="flex items-center gap-2">
             <Input
               id="file-upload"
               type="file"
-              accept=".xlsx,.pdf"
+              accept=".xlsx"
               onChange={handleFileUpload}
               className="flex-1"
               disabled={isProcessing}
@@ -233,7 +199,7 @@ export default function StrengthOrderForm() {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Upload an Excel file or PDF containing your strength rankings
+            Upload an Excel file containing your strength rankings
           </p>
         </div>
 
@@ -247,30 +213,27 @@ export default function StrengthOrderForm() {
                 </h2>
               </div>
               <div className="space-y-1">
-                {THEMES[domain].map((theme) => {
-                  const themeName = theme.name;
-                  return (
-                    <div key={themeName} className="mb-2">
-                      <Label>{themeName}</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="34"
-                        value={strengthsOrder[themeName] || ""}
-                        placeholder="Enter rank (1-34)"
-                        onChange={(e) => {
-                          const newValue = parseInt(e.target.value, 10);
-                          if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
-                            setStrengthsOrder((prev) => ({
-                              ...prev,
-                              [themeName]: newValue,
-                            }));
-                          }
-                        }}
-                      />
-                    </div>
-                  );
-                })}
+                {THEMES[domain].map((theme) => (
+                  <div key={theme.name} className="mb-2">
+                    <Label>{theme.name}</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="34"
+                      value={strengthsOrder[theme.name] || ""}
+                      placeholder="Enter rank (1-34)"
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value, 10);
+                        if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
+                          setStrengthsOrder((prev) => ({
+                            ...prev,
+                            [theme.name]: newValue,
+                          }));
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           ))}

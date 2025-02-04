@@ -7,11 +7,9 @@ import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
-import pdfParse from 'pdf-parse';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Keep the existing THEMES object with correct values
 const THEMES = {
   EXECUTING: ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
   INFLUENCING: ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
@@ -26,122 +24,6 @@ interface Ranking {
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
-
-  // Add file upload endpoint for PDF strength rankings
-  app.post("/api/upload-strength-rankings", upload.single('file'), async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const fileBuffer = req.file.buffer;
-      let rankings: Ranking[] = [];
-
-      if (req.file.mimetype === 'application/pdf') {
-        try {
-          const pdfData = await pdfParse(fileBuffer);
-          const text = pdfData.text;
-          console.log('Raw PDF Text:', text);
-
-          // Create a map of all valid strength names (case-insensitive)
-          const validStrengths = Object.values(THEMES)
-            .flat()
-            .reduce<Record<string, string>>((acc, name) => {
-              acc[name.toLowerCase()] = name;
-              return acc;
-            }, {});
-
-          // Process text by sections
-          const sections = text.split(/(?:YOUR TOP|SIGNATURE|EXECUTING|INFLUENCING|RELATIONSHIP BUILDING|STRATEGIC THINKING)/i);
-
-          const foundRankings = new Map<number, string>();
-
-          // Common patterns in CliftonStrengths reports
-          const patterns = [
-            /(\d+)\s*[.-]*\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "1. Learner" or "1 - Learner"
-            /([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*[-–]\s*(\d+)/i,  // "Learner - 1"
-            /Theme\s*(\d+)\s*[-–]\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Theme 1 - Learner"
-            /(\d+)\s*\.\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "1. Learner"
-            /([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+)/i,  // "Learner 1"
-            /Your #(\d+) theme is ([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Your #1 theme is Learner"
-            /Theme (\d+): ([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Theme 1: Learner"
-            /(\d+)[.:]?\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i  // "1:Learner" or "1.Learner"
-          ];
-
-          // Process each section of the text
-          for (const section of sections) {
-            const lines = section.split(/[\n\r]+/).map(line => line.trim());
-
-            for (const line of lines) {
-              if (!line) continue;
-
-              console.log('Processing line:', line);
-
-              for (const pattern of patterns) {
-                const match = line.match(pattern);
-                if (match) {
-                  let rankStr: string;
-                  let nameStr: string;
-
-                  // Handle different patterns
-                  if (pattern.toString().includes('Theme')) {
-                    rankStr = match[1];
-                    nameStr = match[2];
-                  } else if (pattern.toString().startsWith('/([A-Za-z]+')) {
-                    nameStr = match[1];
-                    rankStr = match[2];
-                  } else {
-                    rankStr = match[1];
-                    nameStr = match[2];
-                  }
-
-                  const rank = parseInt(rankStr, 10);
-                  const name = nameStr.trim();
-                  const strengthNameLower = name.toLowerCase();
-
-                  // Check if this is a valid strength name
-                  const originalName = validStrengths[strengthNameLower];
-
-                  if (originalName && rank >= 1 && rank <= 34 && !foundRankings.has(rank)) {
-                    foundRankings.set(rank, originalName);
-                    console.log(`Found ranking: ${rank} - ${originalName}`);
-                    break;
-                  }
-                }
-              }
-            }
-          }
-
-          // Convert rankings to array format
-          rankings = Array.from(foundRankings.entries())
-            .sort((a, b) => a[0] - b[0])
-            .map(([rank, name]) => ({
-              rank,
-              name
-            }));
-
-          console.log('Final rankings:', rankings);
-
-          if (rankings.length === 0) {
-            throw new Error('No valid rankings found in PDF');
-          }
-        } catch (error) {
-          console.error('PDF parsing error:', error);
-          throw new Error('Failed to parse PDF file: ' + (error instanceof Error ? error.message : 'Unknown error'));
-        }
-      }
-
-      res.json({ rankings });
-    } catch (error) {
-      console.error('File processing error:', error);
-      res.status(500).json({ 
-        message: "Failed to process file", 
-        details: error instanceof Error ? error.message : "Unknown error" 
-      });
-    }
-  });
 
   // Strengths routes
   app.get("/api/strengths", async (req, res) => {
@@ -232,7 +114,6 @@ export function registerRoutes(app: Express): Server {
     res.json(allProducts);
   });
 
-  // Update the checkout route with proper URL handling
   app.post("/api/checkout", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -251,7 +132,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ message: "Invalid product configuration" });
       }
 
-      // Construct absolute URLs for success and cancel
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       const successUrl = `${baseUrl}/shop/success`;
       const cancelUrl = `${baseUrl}/shop/cancel`;
@@ -282,7 +162,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Keep raw body for Stripe webhook verification
   app.post("/api/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers["stripe-signature"];
     if (!sig || typeof sig !== 'string') return res.sendStatus(400);
@@ -312,7 +191,6 @@ export function registerRoutes(app: Express): Server {
   return httpServer;
 }
 
-// Helper function to determine strength category
 function getStrengthCategory(strengthName: string): string {
   for (const [category, themes] of Object.entries(THEMES)) {
     if ((themes as readonly string[]).includes(strengthName)) {
