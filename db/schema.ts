@@ -29,6 +29,7 @@ export const coachingNotes = pgTable("coaching_notes", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   tags: jsonb("tags").default([]),
+  conversationId: text("conversation_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

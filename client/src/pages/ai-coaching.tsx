@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
@@ -106,15 +106,18 @@ export default function AiCoaching() {
 
     const groups: Record<string, SelectNote[]> = {};
     notes.forEach(note => {
-      const conversationId = note.conversationId || note.createdAt;
-      if (!groups[conversationId]) {
-        groups[conversationId] = [];
+      // Use conversationId or format createdAt as a string key
+      const key = note.conversationId || 
+        (note.createdAt ? new Date(note.createdAt).toISOString() : new Date().toISOString());
+
+      if (!groups[key]) {
+        groups[key] = [];
       }
-      groups[conversationId].push(note);
+      groups[key].push(note);
     });
 
     return Object.entries(groups).map(([id, notes]) => {
-      const date = new Date(notes[0].createdAt!);
+      const date = notes[0]?.createdAt ? new Date(notes[0].createdAt) : new Date();
       return {
         id,
         title: `Coaching Session ${date.toLocaleDateString()}`,
@@ -124,10 +127,14 @@ export default function AiCoaching() {
           day: 'numeric'
         }),
         notes: notes.sort((a, b) => 
-          new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime()
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
         )
       };
-    }).sort((a, b) => new Date(b.notes[0].createdAt!).getTime() - new Date(a.notes[0].createdAt!).getTime());
+    }).sort((a, b) => {
+      const dateA = a.notes[0]?.createdAt ? new Date(a.notes[0].createdAt) : new Date();
+      const dateB = b.notes[0]?.createdAt ? new Date(b.notes[0].createdAt) : new Date();
+      return dateB.getTime() - dateA.getTime();
+    });
   }, [notes]);
 
   // Start new conversation
