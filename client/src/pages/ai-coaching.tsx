@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Bot, User } from "lucide-react";
 import type { SelectNote } from "@db/schema";
 
 export default function AiCoaching() {
@@ -36,10 +36,6 @@ export default function AiCoaching() {
     onSuccess: () => {
       setMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
-      toast({
-        title: "Message sent",
-        description: "Your AI coach will respond shortly.",
-      });
     },
     onError: (error: Error) => {
       toast({
@@ -64,6 +60,29 @@ export default function AiCoaching() {
     };
   };
 
+  // Function to replace body language cues with emojis
+  const formatResponse = (text: string) => {
+    return text.replace(/\((.*?)\)/g, (_, action) => {
+      const emojiMap: Record<string, string> = {
+        'nodding thoughtfully': '🤔',
+        'leaning forward': '👨‍💼',
+        'smiling warmly': '😊',
+        'making eye contact': '👀',
+        'gesturing encouragingly': '👋',
+        'tilting head': '🤨',
+        'showing genuine interest': '🎯',
+        'listening attentively': '👂',
+      };
+
+      // Find the closest matching emoji or use a default
+      const emoji = Object.entries(emojiMap).find(([key]) => 
+        action.toLowerCase().includes(key.toLowerCase())
+      )?.[1] || '🤖';
+
+      return emoji;
+    });
+  };
+
   return (
     <div className="min-h-screen flex">
       <Sidebar />
@@ -74,7 +93,10 @@ export default function AiCoaching() {
           <div className="grid gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Chat with Your ICF PCC Certified AI Coach</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-6 w-6 text-primary" />
+                  Chat with Your ICF PCC Certified AI Coach
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +115,7 @@ export default function AiCoaching() {
                     {coachingMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Getting response...
+                        Coach is thinking...
                       </>
                     ) : (
                       <>
@@ -125,23 +147,55 @@ export default function AiCoaching() {
                       const { question, answer } = formatMessage(note.content);
                       return (
                         <div key={note.id} className="space-y-4">
-                          <div className="p-4 rounded-lg bg-muted/50">
-                            <p className="text-sm font-medium mb-2">You:</p>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                              {question}
-                            </p>
+                          {/* User message */}
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                              <User className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="bg-muted/50 rounded-lg p-4">
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                  {question}
+                                </p>
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Coach response */}
                           {answer && (
-                            <div className="p-4 rounded-lg border bg-card">
-                              <p className="text-sm font-medium mb-2">AI Coach:</p>
-                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                {answer}
-                              </p>
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Bot className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="bg-primary/10 rounded-lg p-4">
+                                  <p className="text-sm whitespace-pre-wrap">
+                                    {formatResponse(answer)}
+                                  </p>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {new Date(note.createdAt!).toLocaleString()}
+                                </p>
+                              </div>
                             </div>
                           )}
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(note.createdAt!).toLocaleString()}
-                          </p>
+
+                          {/* Loading state for pending response */}
+                          {coachingMutation.isPending && note === conversations[0] && !answer && (
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Bot className="h-5 w-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="bg-primary/10 rounded-lg p-4">
+                                  <div className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <p className="text-sm">Coach is thinking...</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -27,8 +27,16 @@ export async function generateCoachingResponse(
 - End each response with an engaging question
 
 Remember to:
-- Express warmth and attentiveness through body language cues in (parentheses)
-- Avoid making lists or using bullet points
+- Express warmth and attentiveness through these specific body language cues (pick one per response):
+  - (nodding thoughtfully)
+  - (leaning forward)
+  - (smiling warmly)
+  - (making eye contact)
+  - (gesturing encouragingly)
+  - (tilting head)
+  - (showing genuine interest)
+  - (listening attentively)
+- Always start your response with one of these body language cues
 - Keep the conversation going without being the one to end it
 - Focus on the client's growth and insights
 
@@ -56,5 +64,5 @@ Context: The client's top strengths are ${strengths}`
 }
 
 function generateFallbackResponse(message: string, strengths: string): string {
-  return `(Leaning forward with genuine interest) I appreciate you sharing that with me. I notice how your strengths in ${strengths} might be particularly relevant here. What aspects of this situation would you like to explore further?`;
+  return `(nodding thoughtfully) I appreciate you sharing that with me. I notice how your strengths in ${strengths} might be particularly relevant here. What aspects of this situation would you like to explore further?`;
 }
