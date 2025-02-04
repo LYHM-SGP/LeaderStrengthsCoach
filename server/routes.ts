@@ -6,16 +6,85 @@ import { strengths, coachingNotes, products, orders } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
+import multer from 'multer';
+import * as pdfParse from 'pdf-parse';
 
-// Assuming THEMES is defined elsewhere,  e.g., in a separate file or environment variable
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Keep the existing THEMES object with correct values from frontend
 const THEMES = {
-  "Theme A": [{name: "Strength 1"}, {name: "Strength 2"}],
-  "Theme B": [{name: "Strength 3"}, {name: "Strength 4"}]
+  EXECUTING: ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
+  INFLUENCING: ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
+  'RELATIONSHIP BUILDING': ['Adaptability', 'Connectedness', 'Developer', 'Empathy', 'Harmony', 'Includer', 'Individualization', 'Positivity', 'Relator'],
+  'STRATEGIC THINKING': ['Analytical', 'Context', 'Futuristic', 'Ideation', 'Input', 'Intellection', 'Learner', 'Strategic']
 };
-
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
+
+  // Add new file upload endpoint for PDF processing
+  app.post("/api/upload-strength-rankings", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const fileBuffer = req.file.buffer;
+      let rankings = [];
+
+      if (req.file.mimetype === 'application/pdf') {
+        // Process PDF file using buffer directly
+        const pdfData = await pdfParse(fileBuffer, { max: 1 }); // Only parse first page
+        const text = pdfData.text;
+        console.log('PDF Text:', text); // Debug log
+
+        const foundRankings = new Map();
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+          // Match patterns like "1. Learner" or "1 - Learner" or "1 Learner"
+          const match = line.match(/(\d+)[\s.-]*(\w+(?:\s+\w+)*(?:-\w+)*)/);
+          if (match) {
+            const rank = parseInt(match[1]);
+            const strengthName = match[2].trim();
+
+            // Validate rank and strength name
+            if (rank >= 1 && rank <= 34) {
+              // Check if the strength name exists in any category
+              const exists = Object.values(THEMES).some(category => 
+                category.some(theme => 
+                  theme.toLowerCase() === strengthName.toLowerCase() ||
+                  theme.replace('-', ' ').toLowerCase() === strengthName.toLowerCase()
+                )
+              );
+
+              if (exists) {
+                foundRankings.set(rank, strengthName);
+              }
+            }
+          }
+        }
+
+        // Convert rankings to array format
+        rankings = Array.from(foundRankings.entries()).map(([rank, name]) => ({
+          rank,
+          name
+        }));
+
+        console.log('Found rankings:', rankings); // Debug log
+      }
+
+      res.json({ rankings });
+    } catch (error) {
+      console.error('File processing error:', error);
+      res.status(500).json({ 
+        message: "Failed to process file", 
+        details: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
 
   // Strengths routes
   app.get("/api/strengths", async (req, res) => {
@@ -189,7 +258,7 @@ export function registerRoutes(app: Express): Server {
 // Helper function to determine strength category
 function getStrengthCategory(strengthName: string): string {
   for (const [category, themes] of Object.entries(THEMES)) {
-    if (themes.some(theme => theme.name === strengthName)) {
+    if (themes.includes(strengthName)) {
       return category;
     }
   }

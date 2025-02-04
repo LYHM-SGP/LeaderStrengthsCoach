@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertNoteSchema, type SelectNote } from "@db/schema";
+import { insertNoteSchema } from "@db/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { THEMES } from "@/pages/strengths";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, Loader2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 
 // Initial rankings object
@@ -60,16 +60,10 @@ const INITIAL_RANKINGS = {
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
   const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const form = useForm();
-
-  // Debug effect to monitor state changes
-  useEffect(() => {
-    if (open) {
-      console.log('Current strengths order:', strengthsOrder);
-    }
-  }, [strengthsOrder, open]);
 
   const updateStrengths = useMutation({
     mutationFn: (data: any) => {
@@ -85,7 +79,7 @@ export default function StrengthOrderForm() {
     onError: (error) => {
       toast({
         title: "Update failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to update strengths",
         variant: "destructive",
       });
     },
@@ -96,32 +90,64 @@ export default function StrengthOrderForm() {
     if (!file) return;
 
     try {
-      const newRankings: Record<string, number> = {};
+      setIsProcessing(true);
 
-      if (file.name.endsWith(".xlsx")) {
-        // Handle Excel file
+      if (file.name.endsWith(".pdf")) {
+        // Create FormData and send to server
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload-strength-rankings', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to process PDF file');
+        }
+
+        const data = await response.json();
+        const newRankings: Record<string, number> = {};
+
+        // Process the rankings from the server response
+        data.rankings.forEach(({ rank, name }: { rank: number; name: string }) => {
+          const strengthName = Object.keys(INITIAL_RANKINGS).find(
+            key => key.toLowerCase() === name.toLowerCase() ||
+                   key.replace('-', ' ').toLowerCase() === name.toLowerCase()
+          );
+
+          if (strengthName) {
+            newRankings[strengthName] = rank;
+          }
+        });
+
+        if (Object.keys(newRankings).length > 0) {
+          setStrengthsOrder(prev => ({ ...prev, ...newRankings }));
+          toast({
+            title: "PDF processed",
+            description: `Updated ${Object.keys(newRankings).length} strength rankings from the PDF file.`,
+          });
+        }
+      } else if (file.name.endsWith(".xlsx")) {
+        // Handle Excel file processing (existing code)
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            console.log("Processing Excel file...");
             const workbook = XLSX.read(data, { type: 'array' });
-            console.log("Workbook loaded:", workbook.SheetNames);
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
-            console.log("Excel rows:", rows);
 
             // Get the header row (row 3 in Excel, index 2 in array)
             const headerRow = rows[2];
-            console.log("Header row:", headerRow);
-
             // Get the data row (row 4 in Excel, index 3 in array)
             const dataRow = rows[3];
-            console.log("Data row:", dataRow);
 
             if (!headerRow || !dataRow) {
               throw new Error("Required rows not found in Excel file");
             }
+
+            const newRankings: Record<string, number> = {};
 
             // Start from column 5 (index 4) where Theme columns begin
             for (let i = 4; i < headerRow.length; i++) {
@@ -142,16 +168,11 @@ export default function StrengthOrderForm() {
             }
 
             if (Object.keys(newRankings).length > 0) {
-              setStrengthsOrder((prev) => {
-                console.log("Updating strengths order:", newRankings);
-                return { ...prev, ...newRankings };
-              });
+              setStrengthsOrder(prev => ({ ...prev, ...newRankings }));
               toast({
-                title: "File processed",
+                title: "Excel processed",
                 description: `Updated ${Object.keys(newRankings).length} strength rankings from the Excel file.`,
               });
-            } else {
-              throw new Error("No valid rankings found in the Excel file");
             }
           } catch (error) {
             console.error("Excel processing error:", error);
@@ -163,34 +184,6 @@ export default function StrengthOrderForm() {
           }
         };
         reader.readAsArrayBuffer(file);
-      } else {
-        // Handle text file
-        const text = await file.text();
-        const lines = text.split("\n");
-
-        lines.forEach((line) => {
-          const match = line.match(/Theme (\d+)/i);
-          if (match) {
-            const rank = parseInt(match[1]);
-            const strengthName = lines[1]; // Get the strength name from the next line
-            if (INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
-              newRankings[strengthName] = rank;
-            }
-          }
-        });
-
-        if (Object.keys(newRankings).length > 0) {
-          setStrengthsOrder((prev) => {
-            console.log("Updating strengths order:", newRankings);
-            return { ...prev, ...newRankings };
-          });
-          toast({
-            title: "File processed",
-            description: "Strength rankings have been updated from the file.",
-          });
-        } else {
-          throw new Error("No valid rankings found in file");
-        }
       }
     } catch (error) {
       console.error("File processing error:", error);
@@ -199,6 +192,8 @@ export default function StrengthOrderForm() {
         description: error instanceof Error ? error.message : "Please check the file format",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -207,15 +202,6 @@ export default function StrengthOrderForm() {
       name,
       score: rank,
     }));
-
-    if (orderedStrengths.length !== 34) {
-      toast({
-        title: "Invalid input",
-        description: "Please provide rankings for all 34 strengths.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     updateStrengths.mutate(orderedStrengths);
   };
@@ -236,16 +222,21 @@ export default function StrengthOrderForm() {
             <Input
               id="file-upload"
               type="file"
-              accept=".txt,.csv,.xlsx"
+              accept=".xlsx,.pdf"
               onChange={handleFileUpload}
               className="flex-1"
+              disabled={isProcessing}
             />
-            <Button variant="outline" size="icon">
-              <UploadCloud className="h-4 w-4" />
+            <Button variant="outline" size="icon" disabled={isProcessing}>
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UploadCloud className="h-4 w-4" />
+              )}
             </Button>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
-            Upload a file containing "Theme X" rankings to auto-populate the form
+            Upload an Excel file or PDF containing your strength rankings
           </p>
         </div>
 
@@ -279,8 +270,18 @@ export default function StrengthOrderForm() {
           ))}
         </div>
         <div className="flex justify-end">
-          <Button onClick={handleSubmit} disabled={updateStrengths.isPending}>
-            Save Changes
+          <Button 
+            onClick={handleSubmit} 
+            disabled={updateStrengths.isPending || isProcessing}
+          >
+            {updateStrengths.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              'Save Changes'
+            )}
           </Button>
         </div>
       </DialogContent>
