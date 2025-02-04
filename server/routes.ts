@@ -7,8 +7,12 @@ import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+const execAsync = promisify(exec);
 
 const THEMES = {
   "Executing": ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
@@ -179,6 +183,49 @@ export function registerRoutes(app: Express): Server {
       res.json({ received: true });
     } catch (error) {
       res.status(400).json({ message: (error as Error).message });
+    }
+  });
+
+  // AI Coaching route
+  app.post("/api/ai-coaching", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { message } = req.body;
+    const userId = req.user.id;
+
+    try {
+      // Get user's strengths
+      const userStrengths = await db.query.strengths.findMany({
+        where: eq(strengths.userId, userId),
+        orderBy: (strengths, { asc }) => [asc(strengths.score)],
+      });
+
+      // Format strengths for context
+      const topStrengths = userStrengths
+        .slice(0, 5)
+        .map(s => s.name)
+        .join(", ");
+
+      // Prepare context for Qwen
+      const context = `As an AI coach specializing in CliftonStrengths, consider that this person's top 5 strengths are: ${topStrengths}. Their question is: ${message}`;
+
+      // Call Qwen model (placeholder for actual implementation)
+      const response = "This is a placeholder response. Qwen integration pending.";
+
+      // Store the conversation
+      await db.insert(coachingNotes).values({
+        userId,
+        title: "AI Coaching Session",
+        content: `Q: ${message}\nA: ${response}`,
+      });
+
+      res.json({ response });
+    } catch (error) {
+      console.error('AI Coaching error:', error);
+      res.status(500).json({ 
+        message: "Failed to generate coaching response", 
+        details: (error as Error).message 
+      });
     }
   });
 

@@ -1,12 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, BarChart2, BookOpen, ShoppingCart, UserCircle2, LogOut } from "lucide-react";
+import { LayoutDashboard, BarChart2, BookOpen, ShoppingCart, UserCircle2, LogOut, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Strengths", href: "/strengths", icon: BarChart2 },
+  { name: "AI Coach", href: "/ai-coaching", icon: Bot },
   { name: "Coaching Notes", href: "/coaching", icon: BookOpen },
   { name: "Shop", href: "/shop", icon: ShoppingCart },
   { name: "My Profile", href: "/profile", icon: UserCircle2 },

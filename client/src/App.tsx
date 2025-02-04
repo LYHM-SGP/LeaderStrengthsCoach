@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "./lib/protected-route";
+import AiCoaching from "@/pages/ai-coaching";
 
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
@@ -22,6 +23,7 @@ function Router() {
       <ProtectedRoute path="/coaching" component={Coaching} />
       <ProtectedRoute path="/shop" component={Shop} />
       <ProtectedRoute path="/profile" component={Profile} />
+      <ProtectedRoute path="/ai-coaching" component={AiCoaching} />
       <Route component={NotFound} />
     </Switch>
   );
