@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,9 @@ export default function AiCoaching() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
+  const queryClient = useQueryClient();
 
-  const { data: conversations } = useQuery<SelectNote[]>({
+  const { data: conversations, isLoading: isLoadingConversations } = useQuery<SelectNote[]>({
     queryKey: ["/api/notes"],
   });
 
@@ -25,11 +26,15 @@ export default function AiCoaching() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
       });
-      if (!res.ok) throw new Error("Failed to get coaching response");
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error || "Failed to get coaching response");
+      }
       return res.json();
     },
     onSuccess: () => {
       setMessage("");
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
       toast({
         title: "Response received",
         description: "Your AI coach has responded to your message.",
@@ -96,18 +101,28 @@ export default function AiCoaching() {
                 <CardTitle>Coaching History</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {conversations?.map((note) => (
-                    <div key={note.id} className="p-4 rounded-lg border">
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {note.content}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {new Date(note.createdAt!).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                {isLoadingConversations ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : conversations?.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No conversations yet. Start by sending a message above.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {conversations?.map((note) => (
+                      <div key={note.id} className="p-4 rounded-lg border">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {note.content}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {new Date(note.createdAt!).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

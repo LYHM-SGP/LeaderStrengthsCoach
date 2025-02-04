@@ -270,25 +270,41 @@ export function registerRoutes(app: Express): Server {
         challenge: COACHING_AGENTS.challenge.prompt(topStrengths),
       };
 
-      // Generate combined response using Qwen API
-      const aiResponse = await generateCoachingResponse(message, topStrengths, agentPrompts);
+      try {
+        // Generate combined response using Qwen API
+        const aiResponse = await generateCoachingResponse(message, topStrengths, agentPrompts);
 
-      // Store the conversation in coaching notes
-      await db.insert(coachingNotes).values({
-        userId: req.user.id,
-        title: "AI Coaching Session",
-        content: `Q: ${message}\n\nA: ${aiResponse}`,
-        tags: {
-          strengths: topStrengths,
-          agents: ["exploration", "reflection", "challenge"]
-        }
-      });
+        // Store the conversation in coaching notes
+        const [note] = await db.insert(coachingNotes).values({
+          userId: req.user.id,
+          title: "AI Coaching Session",
+          content: `Q: ${message}\n\nA: ${aiResponse}`,
+          tags: {
+            strengths: topStrengths,
+            agents: ["exploration", "reflection", "challenge"]
+          }
+        }).returning();
 
-      res.json({ response: aiResponse });
+        res.json({ response: aiResponse, note });
+      } catch (error) {
+        console.error('AI Coaching error:', error);
+        // Still create a note even if using fallback
+        const [note] = await db.insert(coachingNotes).values({
+          userId: req.user.id,
+          title: "AI Coaching Session (Fallback)",
+          content: `Q: ${message}\n\nA: I'm currently experiencing some technical difficulties, but I'll do my best to help you explore this topic:\n\nWhat aspects of your strengths (${topStrengths}) would you like to discuss further?`,
+          tags: {
+            strengths: topStrengths,
+            fallback: true
+          }
+        }).returning();
+
+        res.json({ response: note.content, note });
+      }
     } catch (error) {
-      console.error('AI Coaching error:', error);
+      console.error('Database error:', error);
       res.status(500).json({
-        message: "Failed to generate coaching response",
+        message: "Failed to process coaching request",
         details: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
