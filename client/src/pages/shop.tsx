@@ -20,11 +20,11 @@ const getStripe = async () => {
       const script = document.createElement('script');
       script.src = 'https://js.stripe.com/v3/';
       script.onload = () => {
-        if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-          reject(new Error('Stripe public key is not configured'));
+        if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+          reject(new Error('Stripe publishable key is not configured'));
           return;
         }
-        resolve(Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY));
+        resolve(Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY));
       };
       script.onerror = () => {
         reject(new Error('Failed to load Stripe'));
