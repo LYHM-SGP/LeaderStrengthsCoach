@@ -111,15 +111,6 @@ export default function Strengths() {
               </div>
             ))}
           </div>
-
-          <div className="mt-12 p-6 bg-white rounded-lg shadow">
-            <h2 className="text-xl font-bold mb-4">
-              You Lead With Strategic Thinking CliftonStrengths themes
-            </h2>
-            <p className="text-gray-600 leading-relaxed">
-              Leaders with great Strategic Thinking strengths are the ones who keep us all focused on what could be. They are constantly absorbing and analyzing information and helping the team make better decisions. People with strength in this domain continually stretch our thinking for the future.
-            </p>
-          </div>
         </div>
       </main>
     </div>
