@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { THEMES } from "@/pages/strengths";
+import { UploadCloud } from "lucide-react";
+import * as XLSX from 'xlsx';
 
 // Lawrence Yong's strength rankings
 const INITIAL_RANKINGS = {
@@ -52,6 +54,11 @@ const INITIAL_RANKINGS = {
   'Includer': 34
 };
 
+// Map from "Theme X" to strength name
+const strengthNamesByRank = Object.entries(INITIAL_RANKINGS)
+  .sort((a, b) => a[1] - b[1])
+  .map(([name]) => name);
+
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
   const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
@@ -78,6 +85,97 @@ export default function StrengthOrderForm() {
       });
     },
   });
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const newRankings: Record<string, number> = {};
+
+      if (file.name.endsWith('.xlsx')) {
+        // Handle Excel file
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as string[][];
+
+            // Process each row looking for Theme numbers
+            rows.forEach((row) => {
+              row.forEach((cell) => {
+                if (typeof cell === 'string') {
+                  const themeMatch = cell.match(/Theme (\d+)/i);
+                  if (themeMatch) {
+                    const rank = parseInt(themeMatch[1]);
+                    if (rank >= 1 && rank <= 34) {
+                      const strengthName = strengthNamesByRank[rank - 1];
+                      if (strengthName) {
+                        newRankings[strengthName] = rank;
+                      }
+                    }
+                  }
+                }
+              });
+            });
+
+            if (Object.keys(newRankings).length > 0) {
+              setStrengthsOrder(newRankings);
+              toast({
+                title: "File processed",
+                description: "Strength rankings have been updated from the Excel file.",
+              });
+            } else {
+              throw new Error("No valid rankings found in the Excel file");
+            }
+          } catch (error) {
+            toast({
+              title: "Excel processing failed",
+              description: error instanceof Error ? error.message : "Please check the Excel file format",
+              variant: "destructive",
+            });
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Handle text file
+        const text = await file.text();
+        const lines = text.split('\n');
+
+        lines.forEach((line) => {
+          const match = line.match(/Theme (\d+)/i);
+          if (match) {
+            const rank = parseInt(match[1]);
+            if (rank >= 1 && rank <= 34) {
+              const strengthName = strengthNamesByRank[rank - 1];
+              if (strengthName) {
+                newRankings[strengthName] = rank;
+              }
+            }
+          }
+        });
+
+        if (Object.keys(newRankings).length > 0) {
+          setStrengthsOrder(newRankings);
+          toast({
+            title: "File processed",
+            description: "Strength rankings have been updated from the file.",
+          });
+        } else {
+          throw new Error("No valid rankings found in file");
+        }
+      }
+    } catch (error) {
+      console.error('File processing error:', error);
+      toast({
+        title: "File processing failed",
+        description: error instanceof Error ? error.message : "Please check the file format",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = () => {
     const orderedStrengths = Object.entries(strengthsOrder).map(([name, rank]) => ({
@@ -106,6 +204,26 @@ export default function StrengthOrderForm() {
         <DialogHeader>
           <DialogTitle>Update Your Strengths Order</DialogTitle>
         </DialogHeader>
+
+        <div className="mb-6 p-4 border rounded-lg bg-secondary/20">
+          <Label htmlFor="file-upload" className="block mb-2">Upload Rankings File</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="file-upload"
+              type="file"
+              accept=".txt,.csv,.xlsx"
+              onChange={handleFileUpload}
+              className="flex-1"
+            />
+            <Button variant="outline" size="icon">
+              <UploadCloud className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Upload a file containing "Theme X" rankings to auto-populate the form
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 py-4">
           {Object.entries(THEMES).map(([domain, themes]) => (
             <div key={domain}>
