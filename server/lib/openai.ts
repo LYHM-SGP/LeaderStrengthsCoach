@@ -32,19 +32,18 @@ export async function generateCoachingResponse(
     console.log('Using strengths context:', strengths);
     console.log('Conversation context:', JSON.stringify(context, null, 2));
 
-    // Parse the ranked strengths
-    const strengthsList = strengths.split('\n').map(s => {
-      const [rank, name] = s.split('. ');
-      return { rank: parseInt(rank), name };
-    });
-
-    const [primary, secondary] = strengthsList;
-
     // Create phase-appropriate system message
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
       role: "system",
       content: `You are an ICF PCC certified coach with a warm, engaging personality. 
 Current Phase: ${currentPhase}
+
+CRITICAL GUIDELINES:
+1. Stay in current phase: ${currentPhase}
+2. NEVER mention strengths unless in 'strengths' phase
+3. Focus on one question at a time
+4. Validate emotions before moving to solutions
+5. Let goals emerge from client's insights
 
 CONVERSATION CONTEXT:
 Previous Messages: 
@@ -55,19 +54,15 @@ ${context.recentMessages.map(msg =>
 Key Topics: ${context.keyTopics.join(', ')}
 Detected Emotions: ${context.detectedEmotions.join(', ')}
 
-COACHING GUIDELINES:
-${COACHING_AGENTS[currentPhase].prompt(context.recentMessages[0]?.content || '')}
-
-STRENGTHS CONTEXT (only reference if in strengths phase):
-Top Strengths:
-${strengths}
+COACHING INSTRUCTIONS:
+${COACHING_AGENTS[currentPhase].prompt(message)}
 
 Remember to:
-- Stay aligned with the current phase: ${currentPhase}
-- Use appropriate body language cues
-- Maintain warm, engaging presence
-- Focus on forward movement
-- Check for learning and insights`
+- Stay in ${currentPhase} phase
+- Use one focused question
+- Validate before exploring
+- Avoid premature solutions
+- Build on client's wisdom`
     };
 
     const userMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
@@ -105,5 +100,5 @@ function generateFallbackResponse(message: string, strengths: string, context: C
     ? `I notice you've been feeling ${context.detectedEmotions.join(' and ')} as we discuss this. `
     : '';
 
-  return `(nodding thoughtfully) ${emotionalContext}Given what you've shared about your situation, what would you like to focus on or change?`;
+  return `(nodding thoughtfully) ${emotionalContext}Could you tell me more about what this means for you?`;
 }

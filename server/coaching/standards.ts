@@ -8,49 +8,55 @@ export const COACHING_AGENTS = {
     name: "Progression Agent",
     description: "Determines when to progress conversation phases",
     analyzeContext: (messages: any[], currentPhase: ConversationPhase) => {
-      // Count consecutive exploration messages
-      let explorationCount = 0;
       let hasSharedEmotions = false;
       let hasSharedImpact = false;
       let hasSharedDesire = false;
+      let emotionalDepth = 0;
 
       // Analyze recent messages for progression indicators
       messages.forEach(msg => {
         const content = msg.content.toLowerCase();
 
-        // Check for emotional content
+        // Check for emotional content and depth
         if (content.includes('feel') || content.includes('angry') || 
-            content.includes('sad') || content.includes('happy')) {
+            content.includes('sad') || content.includes('happy') ||
+            content.includes('frustrated') || content.includes('betrayed')) {
           hasSharedEmotions = true;
+          emotionalDepth++;
         }
 
         // Check for impact statements
         if (content.includes('impact') || content.includes('affect') || 
-            content.includes('because') || content.includes('leads to')) {
+            content.includes('because') || content.includes('leads to') ||
+            content.includes('makes me')) {
           hasSharedImpact = true;
         }
 
-        // Check for desire to change
-        if (content.includes('want') || content.includes('wish') || 
-            content.includes('hope') || content.includes('would like')) {
+        // Check for explicit desire to change or take action
+        if (content.includes('want to') || content.includes('wish') || 
+            content.includes('would like') || content.includes('need to') ||
+            content.includes('have to') || content.includes('should')) {
           hasSharedDesire = true;
         }
       });
 
-      // Determine if ready to progress based on phase
+      // More strict phase progression rules
       switch(currentPhase) {
         case 'exploration':
-          if (hasSharedEmotions && messages.length >= 3) {
+          // Only move to understanding after sufficient emotional sharing
+          if (hasSharedEmotions && emotionalDepth >= 2) {
             return 'understanding';
           }
           break;
         case 'understanding':
-          if (hasSharedImpact && hasSharedEmotions && messages.length >= 5) {
+          // Require both emotional awareness and impact understanding
+          if (hasSharedEmotions && hasSharedImpact && messages.length >= 4) {
             return 'goalsetting';
           }
           break;
         case 'goalsetting':
-          if (hasSharedDesire) {
+          // Only move to strengths after clear desire for change
+          if (hasSharedDesire && hasSharedImpact) {
             return 'strengths';
           }
           break;
@@ -64,13 +70,13 @@ export const COACHING_AGENTS = {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
     prompt: (context: string) => `
-(Making eye contact with genuine interest) How are you feeling about this situation right now?
+(Making eye contact with genuine interest) What are you feeling about this situation?
 
 Remember to:
 - Listen for emotional content
-- Acknowledge feelings
-- Stay curious but focused
-- Move forward when appropriate
+- Acknowledge feelings without solutions
+- Stay with emotions
+- Validate experiences
 `,
   },
 
@@ -78,13 +84,13 @@ Remember to:
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) What impact is this having on you?
+(Nodding thoughtfully) How is this situation affecting you?
 
 Remember to:
 - Surface patterns and insights
 - Connect to values
-- Look for readiness to change
-- Progress when understanding is clear
+- Deepen understanding
+- Stay with impact
 `,
   },
 
@@ -92,13 +98,13 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) What specific change would you like to see?
+(Leaning forward with interest) What would you like to see change in this situation?
 
 Remember to:
+- Focus on client's desires
 - Be specific and actionable
-- Connect goals to values
-- Build on insights gained
-- Use strengths when ready
+- Connect to values
+- Avoid mentioning strengths
 `,
   },
 
@@ -106,13 +112,13 @@ Remember to:
     name: "Strengths Integration Agent",
     description: "Uses strengths to support client's goals",
     prompt: (context: string) => `
-(Showing genuine interest) How might your natural talents help you achieve this goal?
+(Showing genuine interest) How might your natural abilities help you move toward this goal?
 
 Remember to:
-- Connect strengths to specific goals
-- Build on past successes
-- Focus on practical application
-- Maintain forward momentum
+- Connect strengths to stated goals
+- Focus on client insights
+- Support practical application
+- Build on client's wisdom
 `,
   },
 };
