@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { strengths, coachingNotes, products, orders } from "@db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
@@ -198,17 +198,16 @@ export function registerRoutes(app: Express): Server {
     const userId = req.user.id;
 
     try {
-      // Get user's strengths for context, properly ordered by score
+      // Get user's strengths for context, properly ordered by score ascending (1=highest rank)
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
-        orderBy: [desc(strengths.score)],
+        orderBy: [asc(strengths.score)], // Changed to ascending to get correct ranking
       });
 
       // Format strengths for context, ensuring correct ranking order (1-10)
       const topStrengths = userStrengths
-        .sort((a, b) => b.score - a.score) 
-        .slice(0, 10)  
-        .map((s, index) => `${index + 1}. ${s.name}`) 
+        .slice(0, 10)  // Get top 10 strengths
+        .map((s, index) => `${index + 1}. ${s.name}`)
         .join("\n");
 
       // Get recent conversation history
