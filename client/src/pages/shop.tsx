@@ -7,23 +7,54 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { FileText, Calendar } from "lucide-react";
+import { useEffect } from "react";
 
 declare const Stripe: any;
+
+let stripePromise: Promise<any> | null = null;
+
+const getStripe = () => {
+  if (!stripePromise) {
+    stripePromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.onload = () => {
+        resolve(Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY));
+      };
+      document.body.appendChild(script);
+    });
+  }
+  return stripePromise;
+};
 
 export default function Shop() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: products } = useQuery<SelectProduct[]>({
+  const { data: products, error } = useQuery<SelectProduct[]>({
     queryKey: ["/api/products"],
   });
+
+  useEffect(() => {
+    // Load Stripe on component mount
+    getStripe();
+  }, []);
+
+  if (error) {
+    toast({
+      title: "Error loading products",
+      description: error.message,
+      variant: "destructive",
+    });
+    return <div>Error loading products</div>; //Added a return statement to prevent rendering further if error occurs.
+  }
 
   const handleCheckout = async (productId: number) => {
     try {
       const res = await apiRequest("POST", "/api/checkout", { productId });
       const { sessionId } = await res.json();
 
-      const stripe = await Stripe(process.env.VITE_STRIPE_PUBLIC_KEY);
+      const stripe = await getStripe();
       await stripe.redirectToCheckout({ sessionId });
     } catch (error) {
       toast({
@@ -39,7 +70,14 @@ export default function Shop() {
       <Sidebar />
       <main className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Shop</h1>
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold">Shop</h1>
+              <p className="text-muted-foreground mt-2">
+                Purchase reports and coaching sessions to accelerate your leadership development
+              </p>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {products?.map((product) => (
