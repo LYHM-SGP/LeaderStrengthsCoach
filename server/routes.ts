@@ -198,17 +198,18 @@ export function registerRoutes(app: Express): Server {
     const userId = req.user.id;
 
     try {
-      // Get user's strengths for context
+      // Get user's strengths for context, properly ordered by score
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
         orderBy: [desc(strengths.score)],
       });
 
-      // Format strengths for context
+      // Format strengths for context, ensuring correct ranking order (1-10)
       const topStrengths = userStrengths
-        .slice(0, 10)  // Changed from 5 to 10 to include top 10 strengths
-        .map(s => s.name)
-        .join(", ");
+        .sort((a, b) => b.score - a.score) 
+        .slice(0, 10)  
+        .map((s, index) => `${index + 1}. ${s.name}`) 
+        .join("\n");
 
       // Get recent conversation history
       const recentNotes = await db.query.coachingNotes.findMany({
@@ -243,7 +244,7 @@ export function registerRoutes(app: Express): Server {
       };
 
       try {
-        // Generate response using OpenAI with context
+        // Generate response using OpenAI with properly ranked strengths context
         const aiResponse = await generateCoachingResponse(
           message,
           topStrengths,

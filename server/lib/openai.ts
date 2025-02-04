@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface ConversationContext {
@@ -29,9 +28,14 @@ export async function generateCoachingResponse(
       content: msg.content,
     })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
-    // Create array of strengths in order of intensity
-    const strengthsList = strengths.split(', ');
-    const [primaryStrength, secondaryStrength] = strengthsList;
+    // Parse the ranked strengths properly
+    const strengthsList = strengths.split('\n').map(s => {
+      const [rank, name] = s.split('. ');
+      return { rank: parseInt(rank), name };
+    });
+
+    // Get the top strengths for easy reference
+    const [primary, secondary] = strengthsList;
 
     // Create a comprehensive system message that includes context awareness
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
@@ -47,11 +51,11 @@ Key Topics Discussed: ${context.keyTopics.join(', ')}
 Detected Emotions: ${context.detectedEmotions.join(', ')}
 
 Client's Top 10 Strengths (in order of intensity):
-${strengthsList.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+${strengths}
 
 IMPORTANT STRENGTH GUIDELINES:
 1. The client's strengths are listed 1-10 in order of intensity, with 1 being most intense
-2. ${primaryStrength} is their MOST intense strength (#1), followed by ${secondaryStrength} (#2)
+2. ${primary.name} is their MOST intense strength (#1), followed by ${secondary.name} (#2)
 3. ONLY reference strengths from their actual top 10 list above
 4. Always mention the strength's position (1-10) when referencing it
 5. Never assume or mention strengths that aren't in their list
@@ -60,7 +64,7 @@ Core Coaching Approach:
 1. When exploring situations, start with their most intense strengths (#1-3)
 2. Consider how multiple strengths might interact together
 3. Remember that higher-ranked strengths (closer to #1) are more readily available to the client
-4. When referencing a strength, acknowledge its intensity position (e.g., "Your #1 strength ${primaryStrength}")
+4. When referencing a strength, acknowledge its intensity position (e.g., "Your #1 strength ${primary.name}")
 
 Remember to:
 - Express warmth and attentiveness through these specific body language cues (pick one per response):
@@ -110,6 +114,8 @@ function generateFallbackResponse(message: string, strengths: string, context: C
     ? `I notice you've been feeling ${context.detectedEmotions.join(' and ')} as we discuss this. `
     : '';
 
-  const [primaryStrength] = strengths.split(',');
-  return `(nodding thoughtfully) ${emotionalContext}I notice your #1 strength ${primaryStrength} could be particularly relevant here. Could you tell me more about how this situation feels to you, especially considering your natural talents?`;
+  // Parse first strength properly from the numbered list
+  const firstStrength = strengths.split('\n')[0].split('. ')[1];
+
+  return `(nodding thoughtfully) ${emotionalContext}I notice your #1 strength ${firstStrength} could be particularly relevant here. Could you tell me more about how this situation feels to you, especially considering your natural talents?`;
 }
