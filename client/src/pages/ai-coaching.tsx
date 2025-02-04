@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Target, BookOpen, Brain } from "lucide-react";
+import { Loader2, Send, Search, BookOpen, Brain } from "lucide-react";
 import type { SelectNote } from "@db/schema";
 import {
   Select,
@@ -16,26 +16,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type CoachingModality = "text" | "goals" | "reflection";
+type CoachingAgent = "exploration" | "reflection" | "challenge";
 
-const MODALITY_CONFIG = {
-  text: {
-    icon: BookOpen,
-    placeholder: "Ask your AI coach about leveraging your strengths...",
-    label: "General Coaching",
-    description: "Have a coaching conversation about any topic",
-  },
-  goals: {
-    icon: Target,
-    placeholder: "Describe your goals and aspirations...",
-    label: "Goal Setting",
-    description: "Get support in setting and achieving your goals",
+const AGENT_CONFIG = {
+  exploration: {
+    icon: Search,
+    label: "Exploration Coach",
+    description: "Ask open-ended questions to promote self-discovery",
+    placeholder: "Share what you'd like to explore...",
   },
   reflection: {
+    icon: BookOpen,
+    label: "Reflection Coach",
+    description: "Summarize and build awareness through reflection",
+    placeholder: "Share your thoughts for reflection...",
+  },
+  challenge: {
     icon: Brain,
-    placeholder: "Share your reflections and insights...",
-    label: "Reflective Practice",
-    description: "Deepen your learning through guided reflection",
+    label: "Challenge Coach",
+    description: "Use Socratic questioning to examine assumptions",
+    placeholder: "Share your perspective for examination...",
   },
 };
 
@@ -43,18 +43,18 @@ export default function AiCoaching() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
-  const [modality, setModality] = useState<CoachingModality>("text");
+  const [agent, setAgent] = useState<CoachingAgent>("exploration");
 
   const { data: conversations } = useQuery<SelectNote[]>({
     queryKey: ["/api/notes"],
   });
 
   const coachingMutation = useMutation({
-    mutationFn: async ({ message, modality }: { message: string; modality: CoachingModality }) => {
+    mutationFn: async ({ message, agent }: { message: string; agent: CoachingAgent }) => {
       const res = await fetch("/api/ai-coaching", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, modality }),
+        body: JSON.stringify({ message, agent }),
       });
       if (!res.ok) throw new Error("Failed to get coaching response");
       return res.json();
@@ -63,7 +63,7 @@ export default function AiCoaching() {
       setMessage("");
       toast({
         title: "Response received",
-        description: "Your AI coach has responded to your question.",
+        description: "Your AI coach has responded to your message.",
       });
     },
     onError: (error: Error) => {
@@ -78,7 +78,7 @@ export default function AiCoaching() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    coachingMutation.mutate({ message, modality });
+    coachingMutation.mutate({ message, agent });
   };
 
   return (
@@ -97,29 +97,31 @@ export default function AiCoaching() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="flex items-center gap-4">
                     <Select
-                      value={modality}
-                      onValueChange={(value) => setModality(value as CoachingModality)}
+                      value={agent}
+                      onValueChange={(value) => setAgent(value as CoachingAgent)}
                     >
                       <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Select coaching mode" />
+                        <SelectValue placeholder="Select coaching agent" />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(MODALITY_CONFIG) as CoachingModality[]).map((key) => {
-                          const { icon: Icon, label, description } = MODALITY_CONFIG[key];
-                          return (
-                            <SelectItem key={key} value={key}>
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-4 w-4" />
-                                <div>
-                                  <div className="font-medium">{label}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {description}
+                        {(Object.entries(AGENT_CONFIG) as [CoachingAgent, typeof AGENT_CONFIG[keyof typeof AGENT_CONFIG]][]).map(
+                          ([key, config]) => {
+                            const Icon = config.icon;
+                            return (
+                              <SelectItem key={key} value={key}>
+                                <div className="flex items-center gap-2">
+                                  <Icon className="h-4 w-4" />
+                                  <div>
+                                    <div className="font-medium">{config.label}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {config.description}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
+                              </SelectItem>
+                            );
+                          }
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -127,7 +129,7 @@ export default function AiCoaching() {
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder={MODALITY_CONFIG[modality].placeholder}
+                    placeholder={AGENT_CONFIG[agent].placeholder}
                     className="min-h-[100px]"
                   />
                   <Button

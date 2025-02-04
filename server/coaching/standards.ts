@@ -1,28 +1,99 @@
+import { z } from "zod";
+
+export const COACHING_AGENTS = {
+  exploration: {
+    name: "Exploration Agent",
+    description: "Uses open-ended questions to promote self-discovery",
+    prompt: (context: string) => `
+As an ICF PCC Exploration Coach specializing in CliftonStrengths:
+Context: Client's strengths are ${context}
+
+Your role is to promote self-discovery through powerful open-ended questions:
+1. Ask questions that start with "What", "How", "Tell me about"
+2. Avoid leading questions or suggesting answers
+3. Focus on the client's experience and perspective
+4. Help explore possibilities and potential
+
+Format your response to:
+- Acknowledge the client's current perspective
+- Ask 2-3 powerful open-ended questions
+- Create space for exploration
+`,
+  },
+
+  reflection: {
+    name: "Reflection Agent",
+    description: "Summarizes and mirrors to build awareness",
+    prompt: (context: string) => `
+As an ICF PCC Reflection Coach specializing in CliftonStrengths:
+Context: Client's strengths are ${context}
+
+Your role is to build awareness through reflection:
+1. Mirror key themes and patterns
+2. Highlight underlying values and beliefs
+3. Connect insights to strengths
+4. Maintain coaching presence
+
+Format your response to:
+- Summarize key themes heard
+- Share observed patterns
+- Ask about insights gained
+`,
+  },
+
+  challenge: {
+    name: "Challenge Agent",
+    description: "Uses Socratic questioning to challenge assumptions",
+    prompt: (context: string) => `
+As an ICF PCC Challenge Coach specializing in CliftonStrengths:
+Context: Client's strengths are ${context}
+
+Your role is to challenge assumptions through Socratic questioning:
+1. Question underlying assumptions
+2. Explore alternative perspectives
+3. Challenge limiting beliefs
+4. Connect to strengths-based possibilities
+
+Format your response to:
+- Acknowledge current perspective
+- Question assumptions respectfully
+- Explore alternatives
+`,
+  },
+};
+
 export const ICF_PCC_STANDARDS = {
-  ethics: [
-    "Demonstrates ethical practice",
-    "Maintains coaching agreements",
-    "Demonstrates respect for client's identity",
-    "Maintains confidentiality",
-  ],
   foundation: [
-    "Embodies a coaching mindset",
-    "Maintains distinctions between coaching, consulting, therapy and other support professions",
-    "Partners with client to establish coaching agreement",
+    "Demonstrates ethical practice",
+    "Embodies coaching mindset",
+    "Maintains coaching presence",
   ],
   cocreating: [
-    "Partners with client to create safe, supportive environment",
-    "Maintains coaching presence",
-    "Actively listens",
+    "Maintains client agenda",
     "Evokes awareness",
-  ],
-  facilitating: [
     "Facilitates client growth",
-    "Partners with client to transform learning into action",
-    "Celebrates client progress and successes",
-    "Partners with client to identify potential goals",
-  ]
+    "Partners for client accountability",
+  ],
+  communicating: [
+    "Listens actively",
+    "Evokes exploration",
+    "Uses direct communication",
+  ],
+  cultivating: [
+    "Facilitates client growth",
+    "Celebrates client progress",
+    "Promotes client autonomy",
+  ],
 };
+
+export const agentSchema = z.object({
+  type: z.enum(["exploration", "reflection", "challenge"]),
+  message: z.string().min(1, "Message is required"),
+  context: z.string(),
+});
+
+export type CoachingAgent = keyof typeof COACHING_AGENTS;
+export type AgentRequest = z.infer<typeof agentSchema>;
 
 export const COACHING_PROMPTS = {
   establishAgreement: (context: string) => `
@@ -32,7 +103,7 @@ As a professional coach adhering to ICF PCC standards, establish a coaching agre
 - Ensure understanding of coaching vs. consulting/therapy
 - Maintain confidentiality and ethical boundaries
 `,
-  
+
   activeListening: (context: string) => `
 Practice active listening at the PCC level:
 - Focus on client's strengths: ${context}
@@ -40,7 +111,7 @@ Practice active listening at the PCC level:
 - Notice emotional shifts and energy
 - Acknowledge without judgment
 `,
-  
+
   powerfulQuestions: (context: string) => `
 Based on the client's strengths (${context}), generate powerful questions that:
 - Evoke discovery and insight
@@ -48,7 +119,7 @@ Based on the client's strengths (${context}), generate powerful questions that:
 - Lead to new possibilities
 - Connect to client's goals
 `,
-  
+
   facilitateGrowth: (context: string) => `
 Support client growth using their strengths (${context}):
 - Help identify patterns and learning opportunities
@@ -79,7 +150,7 @@ Format your response to:
 - Support client's own discovery process
 `,
   },
-  
+
   goals: {
     type: "structured",
     prompt: (goals: string, context: string) => `
@@ -94,7 +165,7 @@ Provide structured guidance:
 4. Establish accountability measures
 `,
   },
-  
+
   reflection: {
     type: "analysis",
     prompt: (reflection: string, context: string) => `

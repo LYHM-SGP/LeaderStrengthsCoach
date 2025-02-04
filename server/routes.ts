@@ -67,6 +67,36 @@ Guide the reflection process:
   }
 };
 
+// Define coaching agents
+type CoachingAgent = 'exploration' | 'goalSetting' | 'reflection'; // Add more agents as needed
+
+interface CoachingAgentDefinition {
+  name: string;
+  prompt: (message: string, context: string) => string;
+}
+
+const COACHING_AGENTS: { [agent in CoachingAgent]: CoachingAgentDefinition } = {
+  exploration: {
+    name: 'Exploration Agent',
+    prompt: (message: string, context: string) => `
+      You are a curious and insightful coach.  The client's strengths are ${context}.  The client said: "${message}".  Respond with open-ended questions to encourage further exploration.
+    `
+  },
+  goalSetting: {
+    name: 'Goal Setting Agent',
+    prompt: (message: string, context: string) => `
+      You are a coach helping the client set SMART goals.  The client's strengths are ${context}. The client said: "${message}". Help the client define specific, measurable, achievable, relevant, and time-bound goals.
+    `
+  },
+  reflection: {
+    name: 'Reflection Agent',
+    prompt: (message: string, context: string) => `
+      You are a coach guiding the client through a reflection exercise. The client's strengths are ${context}. The client said: "${message}". Help the client identify key learnings, insights, and areas for growth.
+    `
+  }
+};
+
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -236,7 +266,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/ai-coaching", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { message, modality = 'text' } = req.body;
+    const { message, agent = 'exploration' } = req.body;
     const userId = req.user.id;
 
     try {
@@ -252,21 +282,22 @@ export function registerRoutes(app: Express): Server {
         .map(s => s.name)
         .join(", ");
 
-      // Get the appropriate prompt based on modality
-      const handler = MODALITY_HANDLERS[modality as keyof typeof MODALITY_HANDLERS];
-      if (!handler) {
-        throw new Error("Unsupported modality");
+      // Get the appropriate agent and prompt
+      const selectedAgent = COACHING_AGENTS[agent as CoachingAgent];
+      if (!selectedAgent) {
+        throw new Error("Unsupported coaching agent");
       }
 
       // TODO: Replace with actual Qwen API call once we have the details
+      // For now, returning a placeholder response
       const aiResponse = "Qwen API integration pending. Please provide API details.";
 
       // Store the conversation in coaching notes
       await db.insert(coachingNotes).values({
         userId: req.user.id,
-        title: "AI Coaching Session",
+        title: `AI Coaching Session: ${selectedAgent.name}`,
         content: `Q: ${message}\nA: ${aiResponse}`,
-        tags: { modality, strengths: topStrengths }
+        tags: { agent, strengths: topStrengths }
       });
 
       res.json({ response: aiResponse });
