@@ -17,60 +17,6 @@ const sentimentAnalyzer = new sentiment();
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
 
-// Define modality handlers
-const MODALITY_HANDLERS = {
-  text: {
-    type: "text",
-    prompt: (message: string, context: string) => `
-You are an ICF PCC certified coach specializing in CliftonStrengths. 
-Context: Client's top strengths are ${context}.
-Question: ${message}
-
-Respond following ICF PCC standards:
-1. Maintain coaching presence
-2. Practice active listening
-3. Ask powerful questions
-4. Facilitate growth and learning
-5. Avoid consulting or giving direct advice
-
-Format your response to:
-- Acknowledge the client's perspective
-- Ask powerful, open-ended questions
-- Support client's own discovery process
-`,
-  },
-
-  goals: {
-    type: "structured",
-    prompt: (goals: string, context: string) => `
-As an ICF PCC coach, help the client develop SMART goals aligned with their strengths:
-Client's strengths: ${context}
-Current goals: ${goals}
-
-Provide structured guidance:
-1. Support goal clarity while maintaining coaching presence
-2. Connect goals to client's strengths
-3. Explore potential obstacles and resources
-4. Establish accountability measures
-`,
-  },
-
-  reflection: {
-    type: "analysis",
-    prompt: (reflection: string, context: string) => `
-As an ICF PCC coach, help the client reflect on their progress:
-Client's strengths: ${context}
-Reflection: ${reflection}
-
-Guide the reflection process:
-1. Acknowledge insights and learning
-2. Explore patterns and connections
-3. Support deeper awareness
-4. Facilitate forward movement
-`,
-  }
-};
-
 // Define coaching agents
 type CoachingAgent = 'exploration' | 'goalSetting' | 'reflection' | 'challenge'; // Add more agents as needed
 
@@ -78,7 +24,6 @@ interface CoachingAgentDefinition {
   name: string;
   prompt: (message: string, context: string) => string;
 }
-
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -89,7 +34,7 @@ export function registerRoutes(app: Express): Server {
 
     const userStrengths = await db.query.strengths.findMany({
       where: eq(strengths.userId, req.user.id),
-      orderBy: (strengths, { desc }) => [desc(strengths.updatedAt)],
+      orderBy: [desc(strengths.updatedAt)],
     });
 
     res.json(userStrengths);
@@ -145,7 +90,7 @@ export function registerRoutes(app: Express): Server {
 
     const notes = await db.query.coachingNotes.findMany({
       where: eq(coachingNotes.userId, req.user.id),
-      orderBy: (notes, { desc }) => [desc(notes.updatedAt)],
+      orderBy: [desc(notes.updatedAt)],
     });
 
     res.json(notes);
@@ -256,7 +201,7 @@ export function registerRoutes(app: Express): Server {
       // Get user's strengths for context
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
-        orderBy: [{ column: strengths.score, order: "asc" }],
+        orderBy: [desc(strengths.score)],
       });
 
       // Format strengths for context
@@ -268,7 +213,7 @@ export function registerRoutes(app: Express): Server {
       // Get recent conversation history
       const recentNotes = await db.query.coachingNotes.findMany({
         where: eq(coachingNotes.userId, userId),
-        orderBy: [{ column: coachingNotes.createdAt, order: "desc" }],
+        orderBy: [desc(coachingNotes.createdAt)],
         limit: 5,
       });
 
