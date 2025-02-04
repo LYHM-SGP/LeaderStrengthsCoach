@@ -85,50 +85,51 @@ Remember to:
   }
 }
 
-function generateFallbackResponse(prompt: string): string {
-  // Extract any strengths mentioned in the prompt
-  const strengthsMatch = prompt.match(/strengths are (.*?)\./);
-  const strengths = strengthsMatch ? strengthsMatch[1] : 'your strengths';
+function generateFallbackResponse(message: string): string {
+  // Generate a more dynamic fallback response based on the emotional content
+  const emotionalPhrases = [
+    'I hear how important this is to you.',
+    'This sounds like a challenging situation.',
+    'Thank you for sharing that with me.',
+    'I can sense there\'s a lot to explore here.'
+  ];
 
-  // Generate conversational responses based on the prompt type
-  if (prompt.includes('exploration')) {
-    return `(Leaning forward with genuine interest) I'm really intrigued by what you're sharing about your journey. I notice how your ${strengths} comes into play here. What aspects of this situation feel most meaningful to you right now?`;
-  } else if (prompt.includes('reflection')) {
-    return `(Nodding thoughtfully) As I listen to your story, I'm noticing some interesting patterns, especially in how you use your ${strengths}. What insights are emerging for you as we discuss this?`;
-  } else if (prompt.includes('challenge')) {
-    return `(Tilting head with curiosity) I'm wondering about the assumptions we might be making here. How might your ${strengths} offer a different perspective on this situation?`;
-  }
+  const questions = [
+    'Could you tell me more about what this means for you?',
+    'What aspects of this situation feel most important to address?',
+    'How are you feeling about this right now?',
+    'What would you like to focus on as we discuss this?'
+  ];
 
-  // Default response
-  return `(Smiling warmly) I appreciate you sharing that with me. I'm curious about how your ${strengths} might influence your approach here. What aspects would you like to explore further?`;
+  const randomPhrase = emotionalPhrases[Math.floor(Math.random() * emotionalPhrases.length)];
+  const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+
+  return `(leaning forward with genuine interest) ${randomPhrase} ${randomQuestion}`;
 }
 
 export async function generateCoachingResponse(
   message: string,
   strengths: string,
-  agentPrompts: Record<string, string>
+  context: Record<string, any>
 ): Promise<string> {
   try {
+    // Create a coaching prompt that includes context and strengths
+    const promptWithContext = `
+Client message: ${message}
+
+Client's top strengths:
+${strengths}
+
+${context.detectedEmotions?.length ? `Detected emotions: ${context.detectedEmotions.join(', ')}` : ''}
+${context.keyTopics?.length ? `Key topics discussed: ${context.keyTopics.join(', ')}` : ''}
+
+As their coach, respond with empathy and help them explore this situation further. Remember to use a coaching mindset and include body language cues in (parentheses).`;
+
     console.log('Generating coaching response for message:', message);
     console.log('Using strengths context:', strengths);
 
-    // Call Qwen API for each agent
-    const responses = await Promise.all(
-      Object.entries(agentPrompts).map(async ([agent, prompt]) => {
-        console.log(`Calling ${agent} agent with prompt:`, prompt);
-        const response = await callQwenApi(prompt);
-        return { agent, response };
-      })
-    );
-
-    // Combine responses in a conversational way
-    const combinedResponse = `(Leaning in with focused attention) I've been reflecting on what you've shared about your journey, especially considering your strengths in ${strengths}.
-
-${responses[0].response}
-
-(Gesturing encouragingly) What resonates most with you from what we've discussed?`;
-
-    return combinedResponse;
+    const response = await callQwenApi(promptWithContext);
+    return response;
   } catch (error) {
     console.error('Error generating coaching response:', error);
     throw error;
