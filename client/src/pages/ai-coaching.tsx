@@ -315,7 +315,7 @@ export default function AiCoaching() {
                           Start by sending a message above.
                         </p>
                       ) : (
-                        activeConversation?.notes.map((note) => {
+                        [...(activeConversation?.notes || [])].reverse().map((note) => {
                           const { question, answer } = formatMessage(note.content);
                           return (
                             <div key={note.id} className="space-y-4">
@@ -351,7 +351,7 @@ export default function AiCoaching() {
                               )}
 
                               {coachingMutation.isPending &&
-                                note === activeConversation.notes[activeConversation.notes.length - 1] &&
+                                note === activeConversation.notes[0] &&
                                 !answer && (
                                   <div className="flex items-start gap-3">
                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
