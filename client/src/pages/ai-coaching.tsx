@@ -33,12 +33,12 @@ export default function AiCoaching() {
       }
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       setMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
       toast({
-        title: "Response received",
-        description: "Your AI coach has responded to your message.",
+        title: "Message sent",
+        description: "Your AI coach will respond shortly.",
       });
     },
     onError: (error: Error) => {
@@ -54,6 +54,14 @@ export default function AiCoaching() {
     e.preventDefault();
     if (!message.trim()) return;
     coachingMutation.mutate(message);
+  };
+
+  const formatMessage = (content: string) => {
+    const parts = content.split('\n\nA: ');
+    return {
+      question: parts[0]?.replace('Q: ', '').trim() || '',
+      answer: parts[1]?.trim() || ''
+    };
   };
 
   return (
@@ -112,26 +120,31 @@ export default function AiCoaching() {
                     No conversations yet. Start by sending a message above.
                   </p>
                 ) : (
-                  <div className="space-y-4">
-                    {conversations?.map((note) => (
-                      <div key={note.id} className="space-y-4">
-                        <div className="p-4 rounded-lg bg-muted/50">
-                          <p className="text-sm font-medium mb-2">You:</p>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {note.content.split('\n\nA:')[0].replace('Q: ', '')}
+                  <div className="space-y-6">
+                    {conversations.map((note) => {
+                      const { question, answer } = formatMessage(note.content);
+                      return (
+                        <div key={note.id} className="space-y-4">
+                          <div className="p-4 rounded-lg bg-muted/50">
+                            <p className="text-sm font-medium mb-2">You:</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {question}
+                            </p>
+                          </div>
+                          {answer && (
+                            <div className="p-4 rounded-lg border bg-card">
+                              <p className="text-sm font-medium mb-2">AI Coach:</p>
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                {answer}
+                              </p>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(note.createdAt!).toLocaleString()}
                           </p>
                         </div>
-                        <div className="p-4 rounded-lg border bg-card">
-                          <p className="text-sm font-medium mb-2">AI Coach:</p>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {note.content.split('\n\nA: ')[1]}
-                          </p>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(note.createdAt!).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

@@ -9,8 +9,8 @@ import express from 'express';
 import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { COACHING_AGENTS, type CoachingAgent } from './coaching/standards';
-import { generateCoachingResponse } from './lib/qwen'; // Added import
+import { COACHING_AGENTS } from './coaching/standards';
+import { generateCoachingResponse } from './lib/openai'; // Updated import
 
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
@@ -263,16 +263,9 @@ export function registerRoutes(app: Express): Server {
         .map(s => s.name)
         .join(", ");
 
-      // Generate prompts from all three agents
-      const agentPrompts = {
-        exploration: COACHING_AGENTS.exploration.prompt(topStrengths),
-        reflection: COACHING_AGENTS.reflection.prompt(topStrengths),
-        challenge: COACHING_AGENTS.challenge.prompt(topStrengths),
-      };
-
       try {
-        // Generate combined response using Qwen API
-        const aiResponse = await generateCoachingResponse(message, topStrengths, agentPrompts);
+        // Generate response using OpenAI
+        const aiResponse = await generateCoachingResponse(message, topStrengths, {});
 
         // Store the conversation in coaching notes
         const [note] = await db.insert(coachingNotes).values({
@@ -280,15 +273,14 @@ export function registerRoutes(app: Express): Server {
           title: "AI Coaching Session",
           content: `Q: ${message}\n\nA: ${aiResponse}`,
           tags: {
-            strengths: topStrengths,
-            agents: ["exploration", "reflection", "challenge"]
+            strengths: topStrengths
           }
         }).returning();
 
         res.json({ response: aiResponse, note });
       } catch (error) {
         console.error('AI Coaching error:', error);
-        // Still create a note even if using fallback
+        // Create a fallback note
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session (Fallback)",
