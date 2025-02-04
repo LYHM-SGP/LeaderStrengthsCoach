@@ -58,10 +58,6 @@ export default function AiCoaching() {
     },
     onSuccess: (data) => {
       setMessage("");
-      // Keep the conversation active after response
-      if (data.note && data.note.conversationId) {
-        setActiveConversationId(data.note.conversationId);
-      }
       queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
     },
     onError: (error: Error) => {
@@ -105,9 +101,11 @@ export default function AiCoaching() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // If there's no active conversation, create a new one
+    // If there's no active conversation, create a new one with today's date as ID
     if (!activeConversationId) {
-      setActiveConversationId(new Date().toISOString());
+      const today = new Date();
+      const dateId = today.toISOString().split('T')[0]; // Use YYYY-MM-DD as conversation ID
+      setActiveConversationId(dateId);
     }
 
     coachingMutation.mutate(message);
@@ -152,17 +150,18 @@ export default function AiCoaching() {
 
     const groups: Record<string, SelectNote[]> = {};
     notes.forEach(note => {
-      const key = note.conversationId ||
-        (note.createdAt ? new Date(note.createdAt).toISOString() : new Date().toISOString());
+      // Group by date for conversation ID
+      const noteDate = new Date(note.createdAt!);
+      const dateKey = noteDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      if (!groups[key]) {
-        groups[key] = [];
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
-      groups[key].push(note);
+      groups[dateKey].push(note);
     });
 
     return Object.entries(groups).map(([id, notes]) => {
-      const date = notes[0]?.createdAt ? new Date(notes[0].createdAt) : new Date();
+      const date = new Date(id);
       return {
         id,
         title: `Coaching Session ${date.toLocaleDateString()}`,
@@ -175,16 +174,13 @@ export default function AiCoaching() {
           new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
         )
       };
-    }).sort((a, b) => {
-      const dateA = a.notes[0]?.createdAt ? new Date(a.notes[0].createdAt) : new Date();
-      const dateB = b.notes[0]?.createdAt ? new Date(b.notes[0].createdAt) : new Date();
-      return dateB.getTime() - dateA.getTime();
-    });
+    }).sort((a, b) => b.id.localeCompare(a.id)); // Sort by date descending
   }, [notes]);
 
   const startNewConversation = () => {
-    const newId = new Date().toISOString();
-    setActiveConversationId(newId);
+    const today = new Date();
+    const dateId = today.toISOString().split('T')[0];
+    setActiveConversationId(dateId);
     textareaRef.current?.focus();
     toast({
       title: "New Conversation Started",
@@ -279,7 +275,7 @@ export default function AiCoaching() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bot className="h-6 w-6 text-primary" />
-                    {activeConversation?.title || "Start a New Conversation"}
+                    {activeConversation?.title || "New Coaching Session"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -313,12 +309,12 @@ export default function AiCoaching() {
                   </form>
 
                   <div className="mt-8 space-y-6">
-                    {!activeConversation?.notes.length ? (
+                    {activeConversation?.notes.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
                         Start by sending a message above.
                       </p>
                     ) : (
-                      activeConversation.notes.map((note) => {
+                      activeConversation?.notes.map((note) => {
                         const { question, answer } = formatMessage(note.content);
                         return (
                           <div key={note.id} className="space-y-4">

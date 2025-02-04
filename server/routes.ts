@@ -247,7 +247,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/ai-coaching", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { message } = req.body;
+    const { message, conversationId } = req.body;
     const userId = req.user.id;
 
     try {
@@ -267,11 +267,17 @@ export function registerRoutes(app: Express): Server {
         // Generate response using OpenAI
         const aiResponse = await generateCoachingResponse(message, topStrengths, {});
 
+        // Use today's date as conversation ID if none provided
+        const today = new Date();
+        const dateId = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const actualConversationId = conversationId || dateId;
+
         // Store the conversation in coaching notes
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session",
           content: `Q: ${message}\n\nA: ${aiResponse}`,
+          conversationId: actualConversationId,
           tags: {
             strengths: topStrengths
           }
@@ -280,11 +286,16 @@ export function registerRoutes(app: Express): Server {
         res.json({ response: aiResponse, note });
       } catch (error) {
         console.error('AI Coaching error:', error);
-        // Create a fallback note
+        // Create a fallback note with the same conversation ID handling
+        const today = new Date();
+        const dateId = today.toISOString().split('T')[0];
+        const actualConversationId = conversationId || dateId;
+
         const [note] = await db.insert(coachingNotes).values({
           userId: req.user.id,
           title: "AI Coaching Session (Fallback)",
           content: `Q: ${message}\n\nA: I'm currently experiencing some technical difficulties, but I'll do my best to help you explore this topic:\n\nWhat aspects of your strengths (${topStrengths}) would you like to discuss further?`,
+          conversationId: actualConversationId,
           tags: {
             strengths: topStrengths,
             fallback: true
