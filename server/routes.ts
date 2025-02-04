@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
+import pdfParse from 'pdf-parse';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -16,12 +17,17 @@ const THEMES = {
   INFLUENCING: ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
   'RELATIONSHIP BUILDING': ['Adaptability', 'Connectedness', 'Developer', 'Empathy', 'Harmony', 'Includer', 'Individualization', 'Positivity', 'Relator'],
   'STRATEGIC THINKING': ['Analytical', 'Context', 'Futuristic', 'Ideation', 'Input', 'Intellection', 'Learner', 'Strategic']
-};
+} as const;
+
+interface Ranking {
+  rank: number;
+  name: string;
+}
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Add file upload endpoint with simplified PDF processing
+  // Add file upload endpoint for PDF strength rankings
   app.post("/api/upload-strength-rankings", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -31,51 +37,100 @@ export function registerRoutes(app: Express): Server {
       }
 
       const fileBuffer = req.file.buffer;
-      let rankings = [];
+      let rankings: Ranking[] = [];
 
       if (req.file.mimetype === 'application/pdf') {
-        // Convert buffer to text
-        const text = fileBuffer.toString('utf-8');
-        console.log('PDF Text:', text); // Debug log
+        try {
+          const pdfData = await pdfParse(fileBuffer);
+          const text = pdfData.text;
+          console.log('Raw PDF Text:', text);
 
-        // Create a map of all valid strength names (case-insensitive)
-        const validStrengths = new Set(
-          Object.values(THEMES)
+          // Create a map of all valid strength names (case-insensitive)
+          const validStrengths = Object.values(THEMES)
             .flat()
-            .map(s => s.toLowerCase())
-        );
+            .reduce<Record<string, string>>((acc, name) => {
+              acc[name.toLowerCase()] = name;
+              return acc;
+            }, {});
 
-        // Find all instances of a number followed by a strength name
-        const foundRankings = new Map();
-        const regex = /(\d+)[.\s-]*([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
-        let match;
+          // Process text by sections
+          const sections = text.split(/(?:YOUR TOP|SIGNATURE|EXECUTING|INFLUENCING|RELATIONSHIP BUILDING|STRATEGIC THINKING)/i);
 
-        while ((match = regex.exec(text)) !== null) {
-          const rank = parseInt(match[1]);
-          const strengthNameLower = match[2].trim().toLowerCase();
+          const foundRankings = new Map<number, string>();
 
-          // Validate rank and strength name
-          if (rank >= 1 && rank <= 34 && validStrengths.has(strengthNameLower)) {
-            // Find the original strength name with correct casing
-            const originalName = Object.values(THEMES)
-              .flat()
-              .find(s => s.toLowerCase() === strengthNameLower);
+          // Common patterns in CliftonStrengths reports
+          const patterns = [
+            /(\d+)\s*[.-]*\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "1. Learner" or "1 - Learner"
+            /([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*[-–]\s*(\d+)/i,  // "Learner - 1"
+            /Theme\s*(\d+)\s*[-–]\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Theme 1 - Learner"
+            /(\d+)\s*\.\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "1. Learner"
+            /([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+(\d+)/i,  // "Learner 1"
+            /Your #(\d+) theme is ([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Your #1 theme is Learner"
+            /Theme (\d+): ([A-Za-z]+(?:\s+[A-Za-z]+)*)/i,  // "Theme 1: Learner"
+            /(\d+)[.:]?\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)/i  // "1:Learner" or "1.Learner"
+          ];
 
-            if (originalName) {
-              foundRankings.set(rank, originalName);
+          // Process each section of the text
+          for (const section of sections) {
+            const lines = section.split(/[\n\r]+/).map(line => line.trim());
+
+            for (const line of lines) {
+              if (!line) continue;
+
+              console.log('Processing line:', line);
+
+              for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match) {
+                  let rankStr: string;
+                  let nameStr: string;
+
+                  // Handle different patterns
+                  if (pattern.toString().includes('Theme')) {
+                    rankStr = match[1];
+                    nameStr = match[2];
+                  } else if (pattern.toString().startsWith('/([A-Za-z]+')) {
+                    nameStr = match[1];
+                    rankStr = match[2];
+                  } else {
+                    rankStr = match[1];
+                    nameStr = match[2];
+                  }
+
+                  const rank = parseInt(rankStr, 10);
+                  const name = nameStr.trim();
+                  const strengthNameLower = name.toLowerCase();
+
+                  // Check if this is a valid strength name
+                  const originalName = validStrengths[strengthNameLower];
+
+                  if (originalName && rank >= 1 && rank <= 34 && !foundRankings.has(rank)) {
+                    foundRankings.set(rank, originalName);
+                    console.log(`Found ranking: ${rank} - ${originalName}`);
+                    break;
+                  }
+                }
+              }
             }
           }
+
+          // Convert rankings to array format
+          rankings = Array.from(foundRankings.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([rank, name]) => ({
+              rank,
+              name
+            }));
+
+          console.log('Final rankings:', rankings);
+
+          if (rankings.length === 0) {
+            throw new Error('No valid rankings found in PDF');
+          }
+        } catch (error) {
+          console.error('PDF parsing error:', error);
+          throw new Error('Failed to parse PDF file: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
-
-        // Convert rankings to array format
-        rankings = Array.from(foundRankings.entries())
-          .sort((a, b) => a[0] - b[0])
-          .map(([rank, name]) => ({
-            rank,
-            name
-          }));
-
-        console.log('Found rankings:', rankings); // Debug log
       }
 
       res.json({ rankings });
@@ -260,7 +315,7 @@ export function registerRoutes(app: Express): Server {
 // Helper function to determine strength category
 function getStrengthCategory(strengthName: string): string {
   for (const [category, themes] of Object.entries(THEMES)) {
-    if (themes.includes(strengthName)) {
+    if ((themes as readonly string[]).includes(strengthName)) {
       return category;
     }
   }
