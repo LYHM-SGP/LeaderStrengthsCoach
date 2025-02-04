@@ -47,7 +47,7 @@ export default function AiCoaching() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          conversationId: activeConversationId || new Date().toISOString()
+          conversationId: activeConversationId
         }),
       });
       if (!res.ok) {
@@ -58,7 +58,7 @@ export default function AiCoaching() {
     },
     onSuccess: (data) => {
       setMessage("");
-      // Set the active conversation to the current one
+      // Keep the conversation active after response
       if (data.note && data.note.conversationId) {
         setActiveConversationId(data.note.conversationId);
       }
@@ -104,6 +104,11 @@ export default function AiCoaching() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
+
+    // Generate a new conversation ID if there isn't one active
+    const newConversationId = activeConversationId || new Date().toISOString();
+    setActiveConversationId(newConversationId);
+
     coachingMutation.mutate(message);
   };
 
@@ -187,6 +192,7 @@ export default function AiCoaching() {
   };
 
   useEffect(() => {
+    // Set the first conversation as active by default
     if (conversations.length > 0 && !activeConversationId) {
       setActiveConversationId(conversations[0].id);
     }
