@@ -6,14 +6,14 @@ import StrengthOrderForm from "@/components/layout/strength-order-form";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
 
 export const DOMAIN_CATEGORIES = [
-  'EXECUTING',
-  'INFLUENCING',
-  'RELATIONSHIP BUILDING',
-  'STRATEGIC THINKING'
+  "Executing",
+  "Influencing",
+  "Relationship Building",
+  "Strategic Thinking"
 ] as const;
 
 export const THEMES = {
-  EXECUTING: [
+  "Executing": [
     { rank: 15, name: 'Achiever' },
     { rank: 21, name: 'Arranger' },
     { rank: 18, name: 'Belief' },
@@ -24,7 +24,7 @@ export const THEMES = {
     { rank: 16, name: 'Responsibility' },
     { rank: 24, name: 'Restorative' }
   ],
-  INFLUENCING: [
+  "Influencing": [
     { rank: 17, name: 'Activator' },
     { rank: 12, name: 'Command' },
     { rank: 22, name: 'Communication' },
@@ -34,7 +34,7 @@ export const THEMES = {
     { rank: 10, name: 'Significance' },
     { rank: 25, name: 'Woo' }
   ],
-  'RELATIONSHIP BUILDING': [
+  "Relationship Building": [
     { rank: 29, name: 'Adaptability' },
     { rank: 27, name: 'Connectedness' },
     { rank: 26, name: 'Developer' },
@@ -45,7 +45,7 @@ export const THEMES = {
     { rank: 30, name: 'Positivity' },
     { rank: 19, name: 'Relator' }
   ],
-  'STRATEGIC THINKING': [
+  "Strategic Thinking": [
     { rank: 4, name: 'Analytical' },
     { rank: 28, name: 'Context' },
     { rank: 2, name: 'Futuristic' },
@@ -98,13 +98,13 @@ export default function Strengths() {
     const isTop10 = rank <= 10;
 
     switch (domain) {
-      case 'STRATEGIC THINKING':
+      case 'Strategic Thinking':
         return isTop10 ? 'bg-emerald-600 text-white' : 'bg-emerald-50';
-      case 'RELATIONSHIP BUILDING':
+      case 'Relationship Building':
         return isTop10 ? 'bg-blue-600 text-white' : 'bg-blue-50';
-      case 'INFLUENCING':
+      case 'Influencing':
         return isTop10 ? 'bg-orange-500 text-white' : 'bg-orange-50';
-      case 'EXECUTING':
+      case 'Executing':
         return isTop10 ? 'bg-purple-600 text-white' : 'bg-purple-50';
       default:
         return 'bg-gray-50';
