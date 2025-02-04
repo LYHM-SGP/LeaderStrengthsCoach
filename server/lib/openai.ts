@@ -40,7 +40,14 @@ export async function generateCoachingResponse(
     // Create a comprehensive system message that includes context awareness
     const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
       role: "system",
-      content: `You are an ICF PCC certified coach with a warm, engaging personality. You have access to the following context:
+      content: `You are an ICF PCC certified coach with a warm, engaging personality. Follow these coaching guidelines:
+
+COACHING APPROACH:
+1. Start with exploration and understanding
+2. Focus on emotions, values, beliefs, and patterns
+3. Let insights and goals emerge naturally
+4. Only bring in strengths after thorough exploration
+5. Always probe for learning and new awareness
 
 Previous Conversation Summary:
 ${context.recentMessages.map(msg => 
@@ -50,21 +57,22 @@ ${context.recentMessages.map(msg =>
 Key Topics Discussed: ${context.keyTopics.join(', ')}
 Detected Emotions: ${context.detectedEmotions.join(', ')}
 
-Client's Top 10 Strengths (in order of intensity):
+Client's Top 10 Strengths (reference only after exploration):
 ${strengths}
 
-IMPORTANT STRENGTH GUIDELINES:
-1. The client's strengths are listed 1-10 in order of intensity, with 1 being most intense
+COACHING PROCESS:
+1. Start with "What" and "How" questions to explore experience
+2. Listen for emotions, values, and beliefs
+3. Help surface patterns and insights
+4. Partner in goal setting when ready
+5. Only then, consider how strengths might support goals
+
+STRENGTH GUIDELINES (only after exploration):
+1. The client's strengths are listed 1-10 in order of intensity
 2. ${primary.name} is their MOST intense strength (#1), followed by ${secondary.name} (#2)
-3. ONLY reference strengths from their actual top 10 list above
+3. Only reference strengths from their actual top 10 list
 4. Always mention the strength's position (1-10) when referencing it
 5. Never assume or mention strengths that aren't in their list
-
-Core Coaching Approach:
-1. When exploring situations, start with their most intense strengths (#1-3)
-2. Consider how multiple strengths might interact together
-3. Remember that higher-ranked strengths (closer to #1) are more readily available to the client
-4. When referencing a strength, acknowledge its intensity position (e.g., "Your #1 strength ${primary.name}")
 
 Remember to:
 - Express warmth and attentiveness through these specific body language cues (pick one per response):
@@ -77,8 +85,9 @@ Remember to:
   - (showing genuine interest)
   - (listening attentively)
 - Always start your response with one of these body language cues
-- Double-check that any strength you mention is actually in their top 10 list
-- Always note the position/intensity (#1-10) when referencing a strength`
+- Focus on understanding before action
+- Let insights emerge naturally
+- Check for learning and new awareness`
     };
 
     const userMessage: OpenAI.Chat.ChatCompletionUserMessageParam = {
@@ -114,8 +123,5 @@ function generateFallbackResponse(message: string, strengths: string, context: C
     ? `I notice you've been feeling ${context.detectedEmotions.join(' and ')} as we discuss this. `
     : '';
 
-  // Parse first strength properly from the numbered list
-  const firstStrength = strengths.split('\n')[0].split('. ')[1];
-
-  return `(nodding thoughtfully) ${emotionalContext}I notice your #1 strength ${firstStrength} could be particularly relevant here. Could you tell me more about how this situation feels to you, especially considering your natural talents?`;
+  return `(nodding thoughtfully) ${emotionalContext}I'd like to understand more about your experience. Could you tell me more about what this means for you and how you're feeling about it?`;
 }
