@@ -71,7 +71,6 @@ export default function StrengthOrderForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/strengths"] });
-      setOpen(false); // Close dialog on success
       toast({
         title: "Strengths updated",
         description: "Your strengths order has been saved successfully.",
@@ -94,7 +93,6 @@ export default function StrengthOrderForm() {
       setIsProcessing(true);
 
       if (file.name.endsWith(".pdf")) {
-        // Create FormData and send to server
         const formData = new FormData();
         formData.append('file', file);
 
@@ -112,11 +110,10 @@ export default function StrengthOrderForm() {
           throw new Error('No valid rankings found in PDF');
         }
 
-        // Update strengths order from rankings
         const newRankings: Record<string, number> = {};
-        data.rankings.forEach(({ rank, name }: { rank: number; name: string }) => {
-          if (INITIAL_RANKINGS.hasOwnProperty(name)) {
-            newRankings[name] = rank;
+        data.rankings.forEach((ranking: { rank: number; name: string }) => {
+          if (INITIAL_RANKINGS.hasOwnProperty(ranking.name)) {
+            newRankings[ranking.name] = ranking.rank;
           }
         });
 
@@ -245,25 +242,25 @@ export default function StrengthOrderForm() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 py-4">
-          {Object.entries(THEMES).map(([domain, themes]) => (
+          {Object.entries(THEMES).map(([domain, themesList]) => (
             <div key={domain}>
               <h3 className="font-semibold mb-2">{domain}</h3>
-              {themes.map((theme) => (
-                <div key={theme} className="mb-2">
-                  <Label htmlFor={theme}>{theme}</Label>
+              {themesList.map((themeName: string) => (
+                <div key={themeName} className="mb-2">
+                  <Label htmlFor={themeName}>{themeName}</Label>
                   <Input
-                    id={theme}
+                    id={themeName}
                     type="number"
                     min="1"
                     max="34"
-                    value={strengthsOrder[theme] || ""}
+                    value={strengthsOrder[themeName] || ""}
                     placeholder="Enter rank (1-34)"
                     onChange={(e) => {
                       const newValue = parseInt(e.target.value, 10);
                       if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
                         setStrengthsOrder((prev) => ({
                           ...prev,
-                          [theme]: newValue,
+                          [themeName]: newValue,
                         }));
                       }
                     }}
