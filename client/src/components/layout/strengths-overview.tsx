@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { SelectStrength } from "@db/schema";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DOMAIN_CATEGORIES, THEMES } from "@/pages/strengths";
 
 export default function StrengthsOverview() {
@@ -33,30 +32,23 @@ export default function StrengthsOverview() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Domain Overview</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={calculateDomainScores()}>
-              <PolarGrid />
-              <PolarAngleAxis
-                dataKey="domain"
-                tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
-              />
-              <Radar
-                name="Domain Strength"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
-                fill="hsl(var(--primary))"
-                fillOpacity={0.5}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-[400px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={calculateDomainScores()}>
+          <PolarGrid />
+          <PolarAngleAxis
+            dataKey="domain"
+            tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
+          />
+          <Radar
+            name="Domain Strength"
+            dataKey="value"
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--primary))"
+            fillOpacity={0.5}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
