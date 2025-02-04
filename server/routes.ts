@@ -11,15 +11,61 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const upload = multer({ storage: multer.memoryStorage() });
-
 const execAsync = promisify(exec);
 
-const THEMES = {
-  "Executing": ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
-  "Influencing": ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
-  "Relationship Building": ['Adaptability', 'Connectedness', 'Developer', 'Empathy', 'Harmony', 'Includer', 'Individualization', 'Positivity', 'Relator'],
-  "Strategic Thinking": ['Analytical', 'Context', 'Futuristic', 'Ideation', 'Input', 'Intellection', 'Learner', 'Strategic']
-} as const;
+// Define modality handlers
+const MODALITY_HANDLERS = {
+  text: {
+    type: "text",
+    prompt: (message: string, context: string) => `
+You are an ICF PCC certified coach specializing in CliftonStrengths. 
+Context: Client's top strengths are ${context}.
+Question: ${message}
+
+Respond following ICF PCC standards:
+1. Maintain coaching presence
+2. Practice active listening
+3. Ask powerful questions
+4. Facilitate growth and learning
+5. Avoid consulting or giving direct advice
+
+Format your response to:
+- Acknowledge the client's perspective
+- Ask powerful, open-ended questions
+- Support client's own discovery process
+`,
+  },
+
+  goals: {
+    type: "structured",
+    prompt: (goals: string, context: string) => `
+As an ICF PCC coach, help the client develop SMART goals aligned with their strengths:
+Client's strengths: ${context}
+Current goals: ${goals}
+
+Provide structured guidance:
+1. Support goal clarity while maintaining coaching presence
+2. Connect goals to client's strengths
+3. Explore potential obstacles and resources
+4. Establish accountability measures
+`,
+  },
+
+  reflection: {
+    type: "analysis",
+    prompt: (reflection: string, context: string) => `
+As an ICF PCC coach, help the client reflect on their progress:
+Client's strengths: ${context}
+Reflection: ${reflection}
+
+Guide the reflection process:
+1. Acknowledge insights and learning
+2. Explore patterns and connections
+3. Support deeper awareness
+4. Facilitate forward movement
+`,
+  }
+};
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -73,9 +119,9 @@ export function registerRoutes(app: Express): Server {
       res.json(newStrengths);
     } catch (error) {
       console.error('Error updating strengths:', error);
-      res.status(500).json({ 
-        message: "Failed to update strengths", 
-        details: (error as Error).message 
+      res.status(500).json({
+        message: "Failed to update strengths",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
   });
@@ -154,9 +200,9 @@ export function registerRoutes(app: Express): Server {
       res.json({ url: session.url });
     } catch (error) {
       console.error('Checkout error:', error);
-      res.status(500).json({ 
-        message: "Checkout failed", 
-        details: (error as Error).message 
+      res.status(500).json({
+        message: "Checkout failed",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
   });
@@ -182,7 +228,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ received: true });
     } catch (error) {
-      res.status(400).json({ message: (error as Error).message });
+      res.status(400).json({ message: error instanceof Error ? error.message : "Unknown error occurred" });
     }
   });
 
@@ -190,7 +236,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/ai-coaching", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { message } = req.body;
+    const { message, modality = 'text' } = req.body;
     const userId = req.user.id;
 
     try {
@@ -206,25 +252,29 @@ export function registerRoutes(app: Express): Server {
         .map(s => s.name)
         .join(", ");
 
-      // Prepare context for Qwen
-      const context = `As an AI coach specializing in CliftonStrengths, consider that this person's top 5 strengths are: ${topStrengths}. Their question is: ${message}`;
+      // Get the appropriate prompt based on modality
+      const handler = MODALITY_HANDLERS[modality as keyof typeof MODALITY_HANDLERS];
+      if (!handler) {
+        throw new Error("Unsupported modality");
+      }
 
-      // Call Qwen model (placeholder for actual implementation)
-      const response = "This is a placeholder response. Qwen integration pending.";
+      // TODO: Replace with actual Qwen API call once we have the details
+      const aiResponse = "Qwen API integration pending. Please provide API details.";
 
-      // Store the conversation
+      // Store the conversation in coaching notes
       await db.insert(coachingNotes).values({
-        userId,
+        userId: req.user.id,
         title: "AI Coaching Session",
-        content: `Q: ${message}\nA: ${response}`,
+        content: `Q: ${message}\nA: ${aiResponse}`,
+        tags: { modality, strengths: topStrengths }
       });
 
-      res.json({ response });
+      res.json({ response: aiResponse });
     } catch (error) {
       console.error('AI Coaching error:', error);
-      res.status(500).json({ 
-        message: "Failed to generate coaching response", 
-        details: (error as Error).message 
+      res.status(500).json({
+        message: "Failed to generate coaching response",
+        details: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
   });
@@ -232,6 +282,13 @@ export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+const THEMES = {
+  "Executing": ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
+  "Influencing": ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
+  "Relationship Building": ['Adaptability', 'Connectedness', 'Developer', 'Empathy', 'Harmony', 'Includer', 'Individualization', 'Positivity', 'Relator'],
+  "Strategic Thinking": ['Analytical', 'Context', 'Futuristic', 'Ideation', 'Input', 'Intellection', 'Learner', 'Strategic']
+} as const;
 
 function getStrengthCategory(strengthName: string): string {
   for (const [category, themes] of Object.entries(THEMES)) {
