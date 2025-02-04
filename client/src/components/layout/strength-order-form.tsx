@@ -71,6 +71,7 @@ export default function StrengthOrderForm() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/strengths"] });
+      setOpen(false); // Close dialog on success
       toast({
         title: "Strengths updated",
         description: "Your strengths order has been saved successfully.",
@@ -107,17 +108,15 @@ export default function StrengthOrderForm() {
         }
 
         const data = await response.json();
+        if (!data.rankings || !Array.isArray(data.rankings) || data.rankings.length === 0) {
+          throw new Error('No valid rankings found in PDF');
+        }
+
+        // Update strengths order from rankings
         const newRankings: Record<string, number> = {};
-
-        // Process the rankings from the server response
         data.rankings.forEach(({ rank, name }: { rank: number; name: string }) => {
-          const strengthName = Object.keys(INITIAL_RANKINGS).find(
-            key => key.toLowerCase() === name.toLowerCase() ||
-                   key.replace('-', ' ').toLowerCase() === name.toLowerCase()
-          );
-
-          if (strengthName) {
-            newRankings[strengthName] = rank;
+          if (INITIAL_RANKINGS.hasOwnProperty(name)) {
+            newRankings[name] = rank;
           }
         });
 
@@ -127,9 +126,10 @@ export default function StrengthOrderForm() {
             title: "PDF processed",
             description: `Updated ${Object.keys(newRankings).length} strength rankings from the PDF file.`,
           });
+        } else {
+          throw new Error('No valid strength rankings found in the PDF');
         }
       } else if (file.name.endsWith(".xlsx")) {
-        // Handle Excel file processing (existing code)
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
@@ -138,9 +138,8 @@ export default function StrengthOrderForm() {
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
 
-            // Get the header row (row 3 in Excel, index 2 in array)
+            // Get header row (row 3) and data row (row 4)
             const headerRow = rows[2];
-            // Get the data row (row 4 in Excel, index 3 in array)
             const dataRow = rows[3];
 
             if (!headerRow || !dataRow) {
@@ -173,6 +172,8 @@ export default function StrengthOrderForm() {
                 title: "Excel processed",
                 description: `Updated ${Object.keys(newRankings).length} strength rankings from the Excel file.`,
               });
+            } else {
+              throw new Error('No valid rankings found in Excel file');
             }
           } catch (error) {
             console.error("Excel processing error:", error);
@@ -194,6 +195,9 @@ export default function StrengthOrderForm() {
       });
     } finally {
       setIsProcessing(false);
+      if (event.target) {
+        event.target.value = ''; // Reset file input
+      }
     }
   };
 
@@ -245,21 +249,21 @@ export default function StrengthOrderForm() {
             <div key={domain}>
               <h3 className="font-semibold mb-2">{domain}</h3>
               {themes.map((theme) => (
-                <div key={theme.name} className="mb-2">
-                  <Label htmlFor={theme.name}>{theme.name}</Label>
+                <div key={theme} className="mb-2">
+                  <Label htmlFor={theme}>{theme}</Label>
                   <Input
-                    id={theme.name}
+                    id={theme}
                     type="number"
                     min="1"
                     max="34"
-                    value={strengthsOrder[theme.name] || ""}
+                    value={strengthsOrder[theme] || ""}
                     placeholder="Enter rank (1-34)"
                     onChange={(e) => {
                       const newValue = parseInt(e.target.value, 10);
-                      if (!isNaN(newValue)) {
+                      if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
                         setStrengthsOrder((prev) => ({
                           ...prev,
-                          [theme.name]: newValue,
+                          [theme]: newValue,
                         }));
                       }
                     }}

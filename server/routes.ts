@@ -7,11 +7,10 @@ import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
-import * as pdfParse from 'pdf-parse';
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Keep the existing THEMES object with correct values from frontend
+// Keep the existing THEMES object with correct values
 const THEMES = {
   EXECUTING: ['Achiever', 'Arranger', 'Belief', 'Consistency', 'Deliberative', 'Discipline', 'Focus', 'Responsibility', 'Restorative'],
   INFLUENCING: ['Activator', 'Command', 'Communication', 'Competition', 'Maximizer', 'Self-Assurance', 'Significance', 'Woo'],
@@ -22,7 +21,7 @@ const THEMES = {
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Add new file upload endpoint for PDF processing
+  // Add file upload endpoint with simplified PDF processing
   app.post("/api/upload-strength-rankings", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -35,43 +34,46 @@ export function registerRoutes(app: Express): Server {
       let rankings = [];
 
       if (req.file.mimetype === 'application/pdf') {
-        // Process PDF file using buffer directly
-        const pdfData = await pdfParse(fileBuffer, { max: 1 }); // Only parse first page
-        const text = pdfData.text;
+        // Convert buffer to text
+        const text = fileBuffer.toString('utf-8');
         console.log('PDF Text:', text); // Debug log
 
+        // Create a map of all valid strength names (case-insensitive)
+        const validStrengths = new Set(
+          Object.values(THEMES)
+            .flat()
+            .map(s => s.toLowerCase())
+        );
+
+        // Find all instances of a number followed by a strength name
         const foundRankings = new Map();
-        const lines = text.split('\n');
+        const regex = /(\d+)[.\s-]*([A-Za-z]+(?:\s+[A-Za-z]+)*)/g;
+        let match;
 
-        for (const line of lines) {
-          // Match patterns like "1. Learner" or "1 - Learner" or "1 Learner"
-          const match = line.match(/(\d+)[\s.-]*(\w+(?:\s+\w+)*(?:-\w+)*)/);
-          if (match) {
-            const rank = parseInt(match[1]);
-            const strengthName = match[2].trim();
+        while ((match = regex.exec(text)) !== null) {
+          const rank = parseInt(match[1]);
+          const strengthNameLower = match[2].trim().toLowerCase();
 
-            // Validate rank and strength name
-            if (rank >= 1 && rank <= 34) {
-              // Check if the strength name exists in any category
-              const exists = Object.values(THEMES).some(category => 
-                category.some(theme => 
-                  theme.toLowerCase() === strengthName.toLowerCase() ||
-                  theme.replace('-', ' ').toLowerCase() === strengthName.toLowerCase()
-                )
-              );
+          // Validate rank and strength name
+          if (rank >= 1 && rank <= 34 && validStrengths.has(strengthNameLower)) {
+            // Find the original strength name with correct casing
+            const originalName = Object.values(THEMES)
+              .flat()
+              .find(s => s.toLowerCase() === strengthNameLower);
 
-              if (exists) {
-                foundRankings.set(rank, strengthName);
-              }
+            if (originalName) {
+              foundRankings.set(rank, originalName);
             }
           }
         }
 
         // Convert rankings to array format
-        rankings = Array.from(foundRankings.entries()).map(([rank, name]) => ({
-          rank,
-          name
-        }));
+        rankings = Array.from(foundRankings.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([rank, name]) => ({
+            rank,
+            name
+          }));
 
         console.log('Found rankings:', rankings); // Debug log
       }
