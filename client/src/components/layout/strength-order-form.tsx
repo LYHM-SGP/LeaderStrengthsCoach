@@ -19,7 +19,7 @@ import { THEMES } from "@/pages/strengths";
 import { UploadCloud } from "lucide-react";
 import * as XLSX from 'xlsx';
 
-// Lawrence Yong's strength rankings
+// Initial rankings object
 const INITIAL_RANKINGS = {
   'Learner': 1,
   'Futuristic': 2,
@@ -109,35 +109,35 @@ export default function StrengthOrderForm() {
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
             console.log("Excel rows:", rows);
 
-            // Find header row with Theme columns
-            const headerRow = rows[0];
+            // Get the header row (row 3 in Excel, index 2 in array)
+            const headerRow = rows[2];
             console.log("Header row:", headerRow);
 
-            const themeColumns: { index: number, themeNumber: number }[] = [];
+            // Get the data row (row 4 in Excel, index 3 in array)
+            const dataRow = rows[3];
+            console.log("Data row:", dataRow);
 
-            // Find which columns contain Theme numbers
-            headerRow.forEach((cell: string, index: number) => {
-              if (typeof cell === 'string') {
-                const match = cell.match(/Theme (\d+)/i);
+            if (!headerRow || !dataRow) {
+              throw new Error("Required rows not found in Excel file");
+            }
+
+            // Start from column 5 (index 4) where Theme columns begin
+            for (let i = 4; i < headerRow.length; i++) {
+              const headerCell = headerRow[i];
+              if (typeof headerCell === 'string') {
+                const match = headerCell.match(/Theme (\d+)/i);
                 if (match) {
                   const themeNumber = parseInt(match[1]);
-                  if (themeNumber >= 1 && themeNumber <= 34) {
-                    themeColumns.push({ index, themeNumber });
+                  const strengthName = dataRow[i];
+
+                  if (themeNumber >= 1 && themeNumber <= 34 && 
+                      typeof strengthName === 'string' && 
+                      INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
+                    newRankings[strengthName] = themeNumber;
                   }
                 }
               }
-            });
-
-            // Process each Theme column
-            themeColumns.forEach(({ index, themeNumber }) => {
-              // Look at the first data row (index 1) for the strength name
-              if (rows[1] && rows[1][index]) {
-                const strengthName = rows[1][index];
-                if (typeof strengthName === 'string' && INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
-                  newRankings[strengthName] = themeNumber;
-                }
-              }
-            });
+            }
 
             if (Object.keys(newRankings).length > 0) {
               setStrengthsOrder((prev) => {
@@ -170,11 +170,9 @@ export default function StrengthOrderForm() {
           const match = line.match(/Theme (\d+)/i);
           if (match) {
             const rank = parseInt(match[1]);
-            if (rank >= 1 && rank <= 34) {
-              const strengthName = lines[1]; // Get the strength name from the next line
-              if (INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
-                newRankings[strengthName] = rank;
-              }
+            const strengthName = lines[1]; // Get the strength name from the next line
+            if (INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
+              newRankings[strengthName] = rank;
             }
           }
         });
