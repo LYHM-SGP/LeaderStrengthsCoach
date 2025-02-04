@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { COACHING_AGENTS, type ConversationPhase } from '../coaching/standards';
 
 interface QwenResponse {
   output: {
@@ -18,8 +19,7 @@ export async function callQwenApi(prompt: string): Promise<string> {
     // Check if we have API key
     if (!process.env.QWEN_API_KEY) {
       console.log('No API key found, using fallback response');
-      // Return a simulated response based on the prompt
-      return generateFallbackResponse(prompt);
+      return generateFallbackResponse();
     }
 
     const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
@@ -80,31 +80,19 @@ Remember to:
     return data.output.text;
   } catch (error) {
     console.error('Error calling Qwen API:', error);
-    // On any error, fall back to simulated responses
-    return generateFallbackResponse(prompt);
+    return generateFallbackResponse();
   }
 }
 
-function generateFallbackResponse(message: string): string {
-  // Generate a more dynamic fallback response based on the emotional content
-  const emotionalPhrases = [
-    'I hear how important this is to you.',
-    'This sounds like a challenging situation.',
-    'Thank you for sharing that with me.',
-    'I can sense there\'s a lot to explore here.'
+function generateFallbackResponse(): string {
+  const responses = [
+    "(leaning forward) I hear how important this is to you. Could you tell me more about what this means for you?",
+    "(nodding thoughtfully) This seems significant. What aspects feel most important to explore?",
+    "(showing genuine interest) I appreciate you sharing this. How would you like to approach this situation?",
+    "(maintaining eye contact) Your perspective is valuable here. What would be most helpful to discuss?"
   ];
 
-  const questions = [
-    'Could you tell me more about what this means for you?',
-    'What aspects of this situation feel most important to address?',
-    'How are you feeling about this right now?',
-    'What would you like to focus on as we discuss this?'
-  ];
-
-  const randomPhrase = emotionalPhrases[Math.floor(Math.random() * emotionalPhrases.length)];
-  const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-
-  return `(leaning forward with genuine interest) ${randomPhrase} ${randomQuestion}`;
+  return responses[Math.floor(Math.random() * responses.length)];
 }
 
 export async function generateCoachingResponse(
@@ -113,20 +101,37 @@ export async function generateCoachingResponse(
   context: Record<string, any>
 ): Promise<string> {
   try {
-    // Create a coaching prompt that includes context and strengths
+    let currentPhase: ConversationPhase = 'exploration';
+
+    // Use progression agent to determine conversation phase
+    if (context.recentMessages?.length) {
+      currentPhase = COACHING_AGENTS.progression.analyzeContext(
+        context.recentMessages,
+        currentPhase
+      ) as ConversationPhase;
+    }
+
+    console.log('Current conversation phase:', currentPhase);
+    console.log('Using strengths context:', strengths);
+
+    // Create a coaching prompt that includes context, phase, and strengths
     const promptWithContext = `
+Phase: ${currentPhase}
+
 Client message: ${message}
 
-Client's top strengths:
-${strengths}
+${currentPhase === 'strengths' ? `Client's top strengths:\n${strengths}` : ''}
 
 ${context.detectedEmotions?.length ? `Detected emotions: ${context.detectedEmotions.join(', ')}` : ''}
 ${context.keyTopics?.length ? `Key topics discussed: ${context.keyTopics.join(', ')}` : ''}
 
-As their coach, respond with empathy and help them explore this situation further. Remember to use a coaching mindset and include body language cues in (parentheses).`;
+${COACHING_AGENTS[currentPhase].prompt(message)}
 
-    console.log('Generating coaching response for message:', message);
-    console.log('Using strengths context:', strengths);
+Remember to:
+- Stay in ${currentPhase} phase
+- Focus on one key question
+- Use empathetic responses
+- Include body language cues in (parentheses)`;
 
     const response = await callQwenApi(promptWithContext);
     return response;
