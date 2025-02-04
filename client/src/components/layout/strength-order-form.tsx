@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -64,18 +65,23 @@ export default function StrengthOrderForm() {
   const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const form = useForm();
+
+  // Debug effect to monitor state changes
+  useEffect(() => {
+    if (open) {
+      console.log('Current strengths order:', strengthsOrder);
+    }
+  }, [strengthsOrder, open]);
 
   const updateStrengths = useMutation({
-    mutationFn: async (data: { name: string, score: number }[]) => {
+    mutationFn: (data: any) => {
       return apiRequest("POST", "/api/strengths/bulk", data).then(res => res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/strengths"] });
       setOpen(false);
-      toast({
-        title: "Strengths updated",
-        description: "Your strengths order has been saved successfully.",
-      });
+      form.reset();
     },
     onError: (error) => {
       toast({
@@ -93,7 +99,7 @@ export default function StrengthOrderForm() {
     try {
       const newRankings: Record<string, number> = {};
 
-      if (file.name.endsWith('.xlsx')) {
+      if (file.name.endsWith(".xlsx")) {
         // Handle Excel file
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -106,7 +112,7 @@ export default function StrengthOrderForm() {
             // Process each row looking for Theme numbers
             rows.forEach((row) => {
               row.forEach((cell) => {
-                if (typeof cell === 'string') {
+                if (typeof cell === "string") {
                   const themeMatch = cell.match(/Theme (\d+)/i);
                   if (themeMatch) {
                     const rank = parseInt(themeMatch[1]);
@@ -122,7 +128,10 @@ export default function StrengthOrderForm() {
             });
 
             if (Object.keys(newRankings).length > 0) {
-              setStrengthsOrder(newRankings);
+              setStrengthsOrder((prev) => {
+                console.log("Updating strengths order:", newRankings);
+                return { ...newRankings };
+              });
               toast({
                 title: "File processed",
                 description: "Strength rankings have been updated from the Excel file.",
@@ -131,6 +140,7 @@ export default function StrengthOrderForm() {
               throw new Error("No valid rankings found in the Excel file");
             }
           } catch (error) {
+            console.error("Excel processing error:", error);
             toast({
               title: "Excel processing failed",
               description: error instanceof Error ? error.message : "Please check the Excel file format",
@@ -142,7 +152,7 @@ export default function StrengthOrderForm() {
       } else {
         // Handle text file
         const text = await file.text();
-        const lines = text.split('\n');
+        const lines = text.split("\n");
 
         lines.forEach((line) => {
           const match = line.match(/Theme (\d+)/i);
@@ -158,7 +168,10 @@ export default function StrengthOrderForm() {
         });
 
         if (Object.keys(newRankings).length > 0) {
-          setStrengthsOrder(newRankings);
+          setStrengthsOrder((prev) => {
+            console.log("Updating strengths order:", newRankings);
+            return { ...newRankings };
+          });
           toast({
             title: "File processed",
             description: "Strength rankings have been updated from the file.",
@@ -168,7 +181,7 @@ export default function StrengthOrderForm() {
         }
       }
     } catch (error) {
-      console.error('File processing error:', error);
+      console.error("File processing error:", error);
       toast({
         title: "File processing failed",
         description: error instanceof Error ? error.message : "Please check the file format",
@@ -236,14 +249,17 @@ export default function StrengthOrderForm() {
                     type="number"
                     min="1"
                     max="34"
-                    value={strengthsOrder[theme.name] || ''}
+                    value={strengthsOrder[theme.name] || ""}
                     placeholder="Enter rank (1-34)"
-                    onChange={(e) =>
-                      setStrengthsOrder((prev) => ({
-                        ...prev,
-                        [theme.name]: parseInt(e.target.value),
-                      }))
-                    }
+                    onChange={(e) => {
+                      const newValue = parseInt(e.target.value, 10); 
+                      if (!isNaN(newValue)) { 
+                        setStrengthsOrder((prev) => ({
+                          ...prev,
+                          [theme.name]: newValue,
+                        }));
+                      }
+                    }}
                   />
                 </div>
               ))}
@@ -251,10 +267,7 @@ export default function StrengthOrderForm() {
           ))}
         </div>
         <div className="flex justify-end">
-          <Button
-            onClick={handleSubmit}
-            disabled={updateStrengths.isPending}
-          >
+          <Button onClick={handleSubmit} disabled={updateStrengths.isPending}>
             Save Changes
           </Button>
         </div>
