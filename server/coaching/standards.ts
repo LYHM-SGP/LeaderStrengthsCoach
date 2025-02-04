@@ -54,12 +54,14 @@ export const COACHING_AGENTS = {
       switch(currentPhase) {
         case 'exploration':
           if (hasSharedEmotions) {
-            return 'goalsetting';
+            return 'understanding';
           }
           break;
         case 'understanding':
           return 'goalsetting';
         case 'goalsetting':
+          return 'strengths';
+        case 'strengths':
           return currentPhase;
       }
 
@@ -93,7 +95,7 @@ Remember to:
 `,
   },
 
-  goalSetting: {
+  goalsetting: {
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
@@ -195,7 +197,7 @@ How would you like to build on these insights?
 };
 
 export const agentSchema = z.object({
-  type: z.enum(["exploration", "understanding", "goalSetting", "strengths"]),
+  type: z.enum(["exploration", "understanding", "goalsetting", "strengths"]),
   message: z.string().min(1, "Message is required"),
   context: z.string(),
 });
