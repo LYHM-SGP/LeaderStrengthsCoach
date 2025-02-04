@@ -12,58 +12,67 @@ export const COACHING_AGENTS = {
       let hasSharedImpact = false;
       let hasSharedDesire = false;
       let showsFrustration = false;
-      let repeatedThemes = new Set();
+      let repeatedPatterns = 0;
+      let lastQuestion = '';
+      let similarQuestions = 0;
 
       // Analyze recent messages for progression indicators
       messages.forEach(msg => {
         const content = msg.content.toLowerCase();
 
+        // Check for repetitive patterns in questions
+        if (msg.role === 'assistant') {
+          if (content.includes('how do you feel') || content.includes('what are you feeling')) {
+            if (lastQuestion.includes('feel')) similarQuestions++;
+            lastQuestion = 'feel';
+          } else if (content.includes('how is this affecting') || content.includes('what impact')) {
+            if (lastQuestion.includes('impact')) similarQuestions++;
+            lastQuestion = 'impact';
+          }
+        }
+
         // Check for emotional content
         if (content.includes('feel') || content.includes('angry') || 
-            content.includes('sad') || content.includes('happy') ||
-            content.includes('frustrated') || content.includes('betrayed')) {
+            content.includes('sad') || content.includes('frustrated')) {
           hasSharedEmotions = true;
         }
 
         // Check for impact statements
         if (content.includes('impact') || content.includes('affect') || 
-            content.includes('because') || content.includes('makes me')) {
+            content.includes('because')) {
           hasSharedImpact = true;
         }
 
-        // Check for desire to change
-        if (content.includes('want to') || content.includes('wish') || 
-            content.includes('would like') || content.includes('need to')) {
-          hasSharedDesire = true;
-        }
-
-        // Check for frustration with process
-        if (content.includes('enough') || content.includes('already told you') ||
-            content.includes('how is this relevant') || content.includes('repetitive')) {
+        // Check for frustration or repetition indicators
+        if (content.includes('enough') || content.includes('already told') ||
+            content.includes('again') || content.includes('what?')) {
           showsFrustration = true;
         }
 
-        // Track repeated themes
+        // Count repeated themes
         if (content.includes('work') || content.includes('gossip') ||
-            content.includes('office') || content.includes('colleagues')) {
-          repeatedThemes.add(content);
+            content.includes('performance')) {
+          repeatedPatterns++;
         }
       });
 
-      // Progress quickly if user shows frustration or repetition
-      if (showsFrustration || repeatedThemes.size > 2) {
+      // Move to goal setting if:
+      // 1. User shows frustration
+      // 2. Similar questions have been asked multiple times
+      // 3. Same themes are being repeated
+      if (showsFrustration || similarQuestions >= 2 || repeatedPatterns >= 3) {
         return 'goalsetting';
       }
 
-      // Dynamic phase progression rules
+      // Quick phase progression
       switch(currentPhase) {
         case 'exploration':
-          if (hasSharedEmotions || messages.length >= 2) {
+          if (hasSharedEmotions) {
             return 'understanding';
           }
           break;
         case 'understanding':
-          if (hasSharedImpact || messages.length >= 3) {
+          if (hasSharedImpact || messages.length >= 2) {
             return 'goalsetting';
           }
           break;
@@ -82,13 +91,12 @@ export const COACHING_AGENTS = {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
     prompt: (context: string) => `
-(Making eye contact with genuine interest) What are you feeling about this situation?
+(Making eye contact) What emotions are coming up for you in this situation?
 
 Remember to:
-- Listen for emotional content
-- Keep exploration brief
-- Move forward when emotions are clear
-- Notice signs of readiness
+- Move quickly to understanding
+- Avoid repeating questions
+- Progress when emotions are clear
 `,
   },
 
@@ -96,13 +104,12 @@ Remember to:
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) How is this affecting your work performance?
+(Nodding thoughtfully) What's the biggest challenge this is creating for you at work?
 
 Remember to:
-- Focus on concrete impact
-- Move to goals when impact is clear
-- Avoid repetitive questions
-- Progress when ready
+- Focus on concrete work impact
+- Move quickly to goals
+- Avoid repeating questions
 `,
   },
 
@@ -110,13 +117,12 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) What specific change would you like to see happen?
+(Leaning forward) What would you like to see change?
 
 Remember to:
 - Be direct and specific
-- Focus on concrete actions
-- Avoid returning to exploration
-- Move forward purposefully
+- Focus on actionable steps
+- Move conversation forward
 `,
   },
 
@@ -124,12 +130,11 @@ Remember to:
     name: "Strengths Integration Agent",
     description: "Uses strengths to support client's goals",
     prompt: (context: string) => `
-(Showing genuine interest) How might your natural abilities help you address this situation?
+(Showing interest) How can your abilities help address this situation?
 
 Remember to:
-- Connect strengths to specific goals
 - Focus on practical actions
-- Stay solution-focused
+- Build on stated goals
 - Support forward momentum
 `,
   },
