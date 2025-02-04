@@ -105,9 +105,10 @@ export default function AiCoaching() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // Generate a new conversation ID if there isn't one active
-    const newConversationId = activeConversationId || new Date().toISOString();
-    setActiveConversationId(newConversationId);
+    // If there's no active conversation, create a new one
+    if (!activeConversationId) {
+      setActiveConversationId(new Date().toISOString());
+    }
 
     coachingMutation.mutate(message);
   };
