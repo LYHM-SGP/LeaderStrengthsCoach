@@ -12,33 +12,35 @@ import { useEffect } from "react";
 
 declare const Stripe: any;
 
-let stripePromise: Promise<any> | null = null;
+const getStripe = (() => {
+  let stripePromise: Promise<any> | null = null;
 
-const getStripe = async () => {
-  if (!stripePromise) {
-    stripePromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://js.stripe.com/v3/';
-      script.onload = () => {
-        if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
-          reject(new Error('Stripe publishable key is not configured'));
-          return;
-        }
-        resolve(Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY));
-      };
-      script.onerror = () => {
-        reject(new Error('Failed to load Stripe'));
-      };
-      document.body.appendChild(script);
-    });
-  }
-  return stripePromise;
-};
+  return async () => {
+    if (!stripePromise) {
+      const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      if (!publishableKey) {
+        throw new Error('Stripe publishable key not found');
+      }
+
+      stripePromise = new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.async = true;
+        script.onload = () => {
+          resolve(new Stripe(publishableKey));
+        };
+        document.body.appendChild(script);
+      });
+    }
+    return stripePromise;
+  };
+})();
 
 export default function Shop() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   const { data: products } = useQuery<SelectProduct[]>({
     queryKey: ["/api/products"],
@@ -47,30 +49,53 @@ export default function Shop() {
   useEffect(() => {
     // Preload Stripe on component mount
     getStripe().catch(error => {
+      console.error('Stripe initialization error:', error);
+      setStripeError(error.message);
       toast({
-        title: "Stripe initialization failed",
-        description: error.message,
+        title: "Payment system initialization failed",
+        description: "Please refresh the page or try again later",
         variant: "destructive",
       });
     });
   }, [toast]);
 
   const handleCheckout = async (productId: number) => {
+    if (stripeError) {
+      toast({
+        title: "Payment system unavailable",
+        description: "Please refresh the page or try again later",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const res = await apiRequest("POST", "/api/checkout", { productId });
-      const { sessionId } = await res.json();
+      console.log('Starting checkout for product:', productId);
 
+      const res = await apiRequest("POST", "/api/checkout", { productId });
+      const data = await res.json();
+
+      if (!data.sessionId) {
+        throw new Error('No session ID received from server');
+      }
+
+      console.log('Got session ID:', data.sessionId);
       const stripe = await getStripe();
-      const { error } = await stripe.redirectToCheckout({ sessionId });
+
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId
+      });
 
       if (error) {
+        console.error('Stripe redirect error:', error);
         throw error;
       }
     } catch (error) {
+      console.error('Checkout error:', error);
       toast({
         title: "Checkout failed",
-        description: (error as Error).message,
+        description: error instanceof Error ? error.message : "Please try again later",
         variant: "destructive",
       });
     } finally {
@@ -115,13 +140,15 @@ export default function Shop() {
                   <Button
                     className="w-full"
                     onClick={() => handleCheckout(product.id)}
-                    disabled={isLoading}
+                    disabled={isLoading || !!stripeError}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
                       </>
+                    ) : stripeError ? (
+                      'Payment Unavailable'
                     ) : (
                       'Purchase'
                     )}

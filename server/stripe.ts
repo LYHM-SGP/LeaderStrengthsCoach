@@ -5,9 +5,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("Missing STRIPE_SECRET_KEY environment variable");
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export async function createCheckoutSession(
   productId: number,
@@ -17,6 +15,12 @@ export async function createCheckoutSession(
   cancelUrl: string,
 ) {
   try {
+    console.log('Creating checkout session for:', {
+      productId,
+      stripePriceId: product.stripePriceId,
+      userId,
+    });
+
     // Verify the price exists in Stripe
     const price = await stripe.prices.retrieve(product.stripePriceId);
 
@@ -42,6 +46,7 @@ export async function createCheckoutSession(
       },
     });
 
+    console.log('Checkout session created:', session.id);
     return session;
   } catch (error) {
     console.error('Stripe session creation error:', error);
