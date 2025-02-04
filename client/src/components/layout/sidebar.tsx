@@ -1,13 +1,14 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, BarChart2, BookOpen, LogOut } from "lucide-react";
+import { LayoutDashboard, BarChart2, BookOpen, ShoppingCart, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Strengths", href: "/strengths", icon: BarChart2 },
   { name: "Coaching Notes", href: "/coaching", icon: BookOpen },
+  { name: "Shop", href: "/shop", icon: ShoppingCart },
 ];
 
 export default function Sidebar() {
@@ -25,17 +26,16 @@ export default function Sidebar() {
           const Icon = item.icon;
           return (
             <Link key={item.name} href={item.href}>
-              <a
+              <Button
+                variant="ghost"
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  location === item.href
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  "w-full justify-start gap-3",
+                  location === item.href && "bg-sidebar-accent text-sidebar-accent-foreground"
                 )}
               >
                 <Icon className="h-5 w-5" />
                 {item.name}
-              </a>
+              </Button>
             </Link>
           );
         })}
