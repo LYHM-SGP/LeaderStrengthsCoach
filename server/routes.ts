@@ -12,7 +12,24 @@ import { promisify } from 'util';
 import { COACHING_AGENTS } from './coaching/standards';
 import { generateCoachingResponse } from './lib/openai';
 import sentiment from 'sentiment';
+
+// Updated sentiment analyzer setup
 const sentimentAnalyzer = new sentiment();
+
+// Add negative emotional keywords with appropriate weights
+sentimentAnalyzer.registerLanguage('en', {
+  labels: {
+    'betrayed': -4,
+    'angry': -3,
+    'sad': -3,
+    'hurt': -3,
+    'gossip': -2,
+    'dread': -3,
+    'distracted': -2,
+    'unfair': -2,
+    'lonely': -2
+  }
+});
 
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
