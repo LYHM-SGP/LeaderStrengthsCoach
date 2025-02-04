@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { SiLinkedin } from "react-icons/si";
 import { ExternalLink, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface LinkedInPost {
   id: string;
@@ -29,18 +30,37 @@ interface LinkedInError {
 
 export default function Resources() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const { data: feed, isLoading, error, refetch } = useQuery<LinkedInPost[], LinkedInError>({
     queryKey: ["/api/linkedin-feed"],
     retry: false,
+    onError: (error: LinkedInError) => {
+      if (!error.message.includes('LinkedIn authentication required')) {
+        toast({
+          title: "Error loading LinkedIn feed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
   });
 
   const handleLinkedInAuth = async () => {
     try {
       const res = await fetch('/api/linkedin/auth');
+      if (!res.ok) throw new Error('Failed to start LinkedIn authentication');
+
       const { authUrl } = await res.json();
+      if (!authUrl) throw new Error('No authentication URL received');
+
       window.location.href = authUrl;
     } catch (error) {
       console.error('Failed to start LinkedIn auth:', error);
+      toast({
+        title: "Authentication Failed",
+        description: "Unable to connect to LinkedIn. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -52,7 +72,7 @@ export default function Resources() {
     });
   };
 
-  const isAuthError = error?.message === "LinkedIn authentication required";
+  const isAuthError = error && 'message' in error && error.message === "LinkedIn authentication required";
 
   return (
     <div className="min-h-screen flex">
@@ -77,7 +97,7 @@ export default function Resources() {
               <CardHeader>
                 <CardTitle>Connect with LinkedIn</CardTitle>
                 <CardDescription>
-                  To view the LinkedIn feed, please connect your LinkedIn account
+                  To view your LinkedIn posts and articles, please connect your LinkedIn account
                 </CardDescription>
               </CardHeader>
               <CardContent>
