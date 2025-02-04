@@ -60,9 +60,8 @@ export default function Strengths() {
   });
 
   const createStrength = useMutation({
-    mutationFn: async (data: typeof form.getValues()) => {
-      const res = await apiRequest("POST", "/api/strengths", data);
-      return res.json();
+    mutationFn: (data: any) => {
+      return apiRequest("POST", "/api/strengths", data).then(res => res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/strengths"] });
