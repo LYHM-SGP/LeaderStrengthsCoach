@@ -29,7 +29,7 @@ export async function callQwenApi(prompt: string): Promise<string> {
         'Authorization': `Bearer ${process.env.QWEN_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'qwen-turbo',
+        model: 'qwen2.5-72b-instruct',
         input: {
           messages: [
             { role: 'system', content: 'You are an ICF PCC certified coach following strict coaching standards.' },
