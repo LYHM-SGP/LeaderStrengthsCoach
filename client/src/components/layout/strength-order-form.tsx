@@ -14,9 +14,47 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { THEMES } from "@/pages/strengths";
 
+// Lawrence Yong's strength rankings
+const INITIAL_RANKINGS = {
+  'Learner': 1,
+  'Futuristic': 2,
+  'Strategic': 3,
+  'Analytical': 4,
+  'Ideation': 5,
+  'Deliberative': 6,
+  'Self-Assurance': 7,
+  'Intellection': 8,
+  'Input': 9,
+  'Significance': 10,
+  'Competition': 11,
+  'Command': 12,
+  'Focus': 13,
+  'Individualization': 14,
+  'Achiever': 15,
+  'Responsibility': 16,
+  'Activator': 17,
+  'Belief': 18,
+  'Relator': 19,
+  'Maximizer': 20,
+  'Arranger': 21,
+  'Communication': 22,
+  'Discipline': 23,
+  'Restorative': 24,
+  'Woo': 25,
+  'Developer': 26,
+  'Connectedness': 27,
+  'Context': 28,
+  'Adaptability': 29,
+  'Positivity': 30,
+  'Empathy': 31,
+  'Harmony': 32,
+  'Consistency': 33,
+  'Includer': 34
+};
+
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
-  const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>({});
+  const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -80,6 +118,7 @@ export default function StrengthOrderForm() {
                     type="number"
                     min="1"
                     max="34"
+                    value={strengthsOrder[theme.name] || ''}
                     placeholder="Enter rank (1-34)"
                     onChange={(e) =>
                       setStrengthsOrder((prev) => ({
