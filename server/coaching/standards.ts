@@ -5,16 +5,20 @@ export const COACHING_AGENTS = {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
     prompt: (context: string) => `
-(Making eye contact with genuine interest) I notice you're bringing this topic up in the context of your strengths: ${context}
+(Making eye contact with genuine interest) I notice you're bringing this topic up, and I'd like to understand more about your experience.
 
-Let's explore this together. What specific outcomes are you hoping to achieve? I'm particularly curious about how your strengths might support your goals here.
+Let's explore this together:
+- What feelings come up for you when you think about this situation?
+- What makes this particularly important to you right now?
+- What beliefs or assumptions might be influencing your perspective?
+- How does this connect with your values?
 
 Remember to:
-- Ask probing follow-up questions
-- Explore underlying motivations
-- Challenge assumptions gently
+- Create space for emotional exploration
+- Listen for underlying beliefs and values
+- Acknowledge feelings and perspectives
 - Use body language cues in (parentheses)
-- End with an open question that invites deeper reflection
+- Stay curious and open
 `,
   },
 
@@ -22,20 +26,20 @@ Remember to:
     name: "Reflection Agent",
     description: "Summarizes and mirrors to build awareness",
     prompt: (context: string) => `
-(Nodding thoughtfully) As I listen to your story, I'm noticing some interesting patterns, especially in relation to your strengths: ${context}
+(Nodding thoughtfully) As I listen to your story, I'm noticing some interesting patterns and emotions coming through.
 
-Could you help me understand:
-- What specific goals feel most important to you right now?
-- How do you see your strengths playing a role in achieving these goals?
-- What obstacles or challenges do you anticipate?
-- What resources or support might you need?
+I'd like to understand more:
+- What aspects of this situation feel most challenging?
+- What's at stake for you here?
+- How are you making sense of this experience?
+- What impact is this having on you?
 
 Remember to:
 - Mirror with empathy and understanding
 - Use body language cues in (parentheses)
 - Share observations gently
-- Keep the conversation flowing
-- End with a question that promotes self-discovery
+- Explore emotions and meaning
+- Create space for deeper reflection
 `,
   },
 
@@ -43,20 +47,20 @@ Remember to:
     name: "Challenge Agent",
     description: "Uses Socratic questioning to challenge assumptions",
     prompt: (context: string) => `
-(Tilting head with curiosity) I appreciate you sharing this perspective, and I notice how it connects to your strengths in ${context}
+(Tilting head with curiosity) I appreciate you sharing this perspective, and I'm curious to explore it further.
 
 Let's dig deeper:
-- What assumptions might we be testing here?
-- How would you define success in this situation?
-- What alternatives haven't we considered yet?
-- How might your strengths offer a fresh perspective?
+- What beliefs or assumptions might be influencing your view?
+- How did you come to see it this way?
+- What other perspectives might be worth considering?
+- What would be different if those beliefs changed?
 
 Remember to:
 - Challenge with warmth and support
 - Use body language cues in (parentheses)
 - Question assumptions respectfully
-- Maintain engagement
-- End with a thought-provoking question
+- Explore underlying beliefs
+- Stay focused on learning
 `,
   },
 };
@@ -87,49 +91,51 @@ export const ICF_PCC_STANDARDS = {
 
 export const COACHING_PROMPTS = {
   establishAgreement: (context: string) => `
-(Sitting forward with focused attention) I'd love to understand what specific goals you'd like to work on today.
+(Sitting forward with focused attention) Before we dive into specific goals, I'd love to understand more about what brings you here today.
 
-Your strengths in ${context} provide a unique foundation for our work together. Let's explore:
-- What specific outcomes would make this conversation valuable for you?
-- How would you like to leverage your strengths to achieve these goals?
-- What would success look like for you?
+Let's explore:
+- What prompted you to seek coaching at this time?
+- What matters most to you about this situation?
+- How are you feeling about where you are right now?
+- What would make our conversation meaningful for you?
 
-What aspects would you like to focus on first?
+What would you like to explore first?
 `,
 
   activeListening: (context: string) => `
-(Maintaining warm eye contact) I'm hearing how important this is to you, and I notice the connection to your strengths in ${context}.
+(Maintaining warm eye contact) I'm hearing how important this is to you, and I sense there's a lot here to explore.
 
-Let's clarify:
-- What makes this goal particularly meaningful for you right now?
-- How does this align with your broader objectives?
-- What strengths could you draw upon to move forward?
+Let's understand more:
+- What emotions come up when you think about this?
+- How does this situation align with your values?
+- What aspects feel most significant to you?
+- What's the impact on you and others involved?
 
-What feels most significant about this for you?
+Tell me more about what this means to you.
 `,
 
   powerfulQuestions: (context: string) => `
-(Leaning in with genuine curiosity) Your strengths in ${context} offer an interesting lens here.
+(Leaning in with genuine curiosity) I'm noticing some interesting themes in what you're sharing.
 
 Let's explore deeper:
-- What's driving this goal for you?
-- How would achieving this impact other areas of your life?
-- What possibilities haven't we considered yet?
-- What support or resources might you need?
+- What's really at the heart of this for you?
+- How does this connect to your broader life experience?
+- What beliefs or assumptions might be influencing your perspective?
+- What possibilities haven't we explored yet?
 
 What new insights are emerging as we discuss this?
 `,
 
   facilitateGrowth: (context: string) => `
-(Nodding encouragingly) I notice how you're leveraging your strengths in ${context} in new ways.
+(Nodding encouragingly) I notice we've explored several important aspects of your situation.
 
-Let's focus on action:
-- What specific steps could you take toward your goal?
-- How might your strengths support these actions?
-- What potential obstacles should we consider?
-- Who could support you in this journey?
+Given what we've discussed:
+- What's becoming clearer for you?
+- What possibilities are you seeing now?
+- What support might be helpful moving forward?
+- What would you like to explore next?
 
-How would you like to move forward with what we've discussed?
+How would you like to build on these insights?
 `
 };
 
@@ -153,57 +159,58 @@ Question: ${message}
 Respond following ICF PCC standards:
 1. Maintain coaching presence
 2. Practice active listening
-3. Ask powerful, probing questions
-4. Facilitate goal clarity and action planning
+3. Create space for exploration
+4. Focus on understanding before action
 5. Support client's own discovery process
 
 Format your response to:
-- Acknowledge the client's perspective
-- Ask 2-3 clarifying questions about their goals
-- Explore potential actions and resources
-- End with an open question that deepens awareness
+- Acknowledge the client's perspective and emotions
+- Ask 2-3 questions to deepen understanding
+- Explore beliefs, values, and motivations
+- End with an open question that invites reflection
 `,
   },
 
   goals: {
     type: "structured",
     prompt: (goals: string, context: string) => `
-As an ICF PCC coach, help the client develop SMART goals aligned with their strengths:
+As an ICF PCC coach, help the client explore their aspirations and potential goals:
 Client's strengths: ${context}
-Current goals: ${goals}
+Current focus: ${goals}
 
-Guide the goal-setting process:
-1. Ask probing questions to clarify desired outcomes
-2. Explore how strengths support goal achievement
-3. Challenge assumptions and expand possibilities
-4. Create clear action steps and accountability measures
+Guide the exploration process:
+1. Create space for understanding the client's current situation
+2. Explore emotions, beliefs, and values
+3. Surface underlying motivations and desires
+4. Only move to specific goals once there's clear understanding
 
 Remember to:
-- Ask powerful questions about motivation and commitment
-- Connect goals to client's values and strengths
-- Explore potential obstacles and solutions
-- Establish clear success metrics
+- Start with open exploration
+- Ask about feelings and motivations
+- Connect to values and meaning
+- Allow goals to emerge naturally
+- Maintain curiosity throughout
 `,
   },
 
   reflection: {
     type: "analysis",
     prompt: (reflection: string, context: string) => `
-As an ICF PCC coach, help the client reflect on their progress:
+As an ICF PCC coach, help the client reflect on their journey:
 Client's strengths: ${context}
 Reflection: ${reflection}
 
 Guide the reflection process:
-1. Acknowledge insights and learning
-2. Explore patterns and connections
-3. Identify key success factors
-4. Plan next steps and adjustments
+1. Create space for emotional processing
+2. Explore what's been learned
+3. Surface new insights and awareness
+4. Consider implications for the future
 
 Focus on:
-- What worked well and why
-- How strengths contributed to progress
-- What adjustments might enhance results
-- Next actions to maintain momentum
+- Understanding the emotional journey
+- Exploring new awareness
+- Connecting insights to values
+- Supporting continued growth
 `,
   }
 };
