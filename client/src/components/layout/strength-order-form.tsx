@@ -86,6 +86,7 @@ export default function StrengthOrderForm() {
         description: "Your strengths order has been saved successfully.",
       });
       setHasChanges(false);
+      setOpen(false); // Close the dialog after successful save
     },
     onError: (error) => {
       toast({
@@ -183,11 +184,16 @@ export default function StrengthOrderForm() {
     updateStrengths.mutate(orderedStrengths);
   };
 
-  const handleClose = () => {
-    if (hasChanges) {
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && hasChanges) {
       setShowUnsavedDialog(true);
     } else {
-      setOpen(false);
+      setOpen(newOpen);
+      if (!newOpen) {
+        // Reset form state when closing without changes
+        setStrengthsOrder(INITIAL_RANKINGS);
+        setHasChanges(false);
+      }
     }
   };
 
@@ -195,7 +201,6 @@ export default function StrengthOrderForm() {
     setShowUnsavedDialog(false);
     setOpen(false);
     setHasChanges(false);
-    // Reset to initial state
     setStrengthsOrder(INITIAL_RANKINGS);
   };
 
@@ -215,7 +220,7 @@ export default function StrengthOrderForm() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button variant="outline">Update Strengths Order</Button>
         </DialogTrigger>
