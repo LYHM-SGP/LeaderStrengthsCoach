@@ -8,13 +8,6 @@ import { createCheckoutSession, handleWebhook } from "./stripe";
 import express from 'express';
 import multer from 'multer';
 
-// Add new imports for LinkedIn OAuth
-const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
-const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const LINKEDIN_REDIRECT_URI = process.env.NODE_ENV === 'production' 
-  ? 'https://your-domain/api/linkedin/callback'
-  : 'http://localhost:5000/api/linkedin/callback';
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 const THEMES = {
@@ -31,78 +24,6 @@ interface Ranking {
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
-
-  // Add LinkedIn OAuth routes
-  app.get("/api/linkedin/auth", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-
-    const scope = encodeURIComponent('r_liteprofile r_emailaddress w_member_social');
-    const state = Math.random().toString(36).substring(7);
-    // Store state in session for validation
-    req.session.linkedInState = state;
-
-    const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&state=${state}&scope=${scope}`;
-
-    res.json({ authUrl });
-  });
-
-  app.get("/api/linkedin/callback", async (req, res) => {
-    const { code, state } = req.query;
-
-    // Validate state to prevent CSRF
-    if (state !== req.session.linkedInState) {
-      return res.status(400).json({ error: "Invalid state parameter" });
-    }
-
-    try {
-      // Exchange code for access token
-      const response = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code as string,
-          client_id: LINKEDIN_CLIENT_ID!,
-          client_secret: LINKEDIN_CLIENT_SECRET!,
-          redirect_uri: LINKEDIN_REDIRECT_URI,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
-      }
-
-      const data = await response.json();
-
-      // Store the access token securely
-      // In a production environment, you'd want to encrypt this
-      req.session.linkedInToken = data.access_token;
-
-      // Get user profile to store the LinkedIn user ID
-      const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
-        headers: {
-          'Authorization': `Bearer ${data.access_token}`,
-        },
-      });
-
-      if (!profileResponse.ok) {
-        throw new Error('Failed to fetch LinkedIn profile');
-      }
-
-      const profile = await profileResponse.json();
-      req.session.linkedInUserId = profile.id;
-
-      res.redirect('/resources');
-    } catch (error) {
-      console.error('LinkedIn OAuth error:', error);
-      res.status(500).json({
-        message: "LinkedIn authentication failed",
-        details: (error as Error).message
-      });
-    }
-  });
 
   // Strengths routes
   app.get("/api/strengths", async (req, res) => {
@@ -266,40 +187,49 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update LinkedIn feed route to use stored token
+  // Update the LinkedIn feed route to be simpler
   app.get("/api/linkedin-feed", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    if (!req.session.linkedInToken || !req.session.linkedInUserId) {
-      return res.status(401).json({
-        message: "LinkedIn authentication required",
-        authUrl: "/api/linkedin/auth"
-      });
-    }
-
     try {
+      // Basic LinkedIn API call first to test connectivity
       const response = await fetch(
-        `https://api.linkedin.com/v2/ugcPosts?q=authors&authors[0]=urn:li:person:${req.session.linkedInUserId}`,
+        'https://api.linkedin.com/v2/me',
         {
           headers: {
-            'Authorization': `Bearer ${req.session.linkedInToken}`,
+            'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`LinkedIn API connection failed: ${response.status}`);
+      }
+
+      // If basic connection works, get the posts
+      const postsResponse = await fetch(
+        'https://api.linkedin.com/v2/ugcPosts',
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
             'X-Restli-Protocol-Version': '2.0.0',
             'Content-Type': 'application/json',
           }
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`LinkedIn API responded with ${response.status}`);
+      if (!postsResponse.ok) {
+        throw new Error('Failed to fetch LinkedIn posts');
       }
 
-      const data = await response.json();
-      res.json(data);
+      const data = await postsResponse.json();
+      res.json(data.elements || []);
     } catch (error) {
       console.error('LinkedIn feed error:', error);
-      res.status(500).json({
-        message: "Failed to fetch LinkedIn feed",
-        details: (error as Error).message
+      res.status(500).json({ 
+        message: "Failed to fetch LinkedIn feed", 
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
