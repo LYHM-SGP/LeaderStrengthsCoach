@@ -11,65 +11,63 @@ export const COACHING_AGENTS = {
       let hasSharedEmotions = false;
       let hasSharedImpact = false;
       let hasSharedDesire = false;
-      let emotionalDepth = 0;
-      let workImpactShared = false;
-      let performanceConcern = false;
+      let showsFrustration = false;
+      let repeatedThemes = new Set();
 
       // Analyze recent messages for progression indicators
       messages.forEach(msg => {
         const content = msg.content.toLowerCase();
 
-        // Check for emotional content and depth
+        // Check for emotional content
         if (content.includes('feel') || content.includes('angry') || 
             content.includes('sad') || content.includes('happy') ||
             content.includes('frustrated') || content.includes('betrayed')) {
           hasSharedEmotions = true;
-          emotionalDepth++;
         }
 
         // Check for impact statements
         if (content.includes('impact') || content.includes('affect') || 
-            content.includes('because') || content.includes('leads to') ||
-            content.includes('makes me')) {
+            content.includes('because') || content.includes('makes me')) {
           hasSharedImpact = true;
         }
 
-        // Check for work impact
-        if (content.includes('meeting') || content.includes('work') ||
-            content.includes('performance') || content.includes('office')) {
-          workImpactShared = true;
-        }
-
-        // Check for performance concerns
-        if (content.includes('impression') || content.includes('performance') ||
-            content.includes('boss') || content.includes('peers')) {
-          performanceConcern = true;
-        }
-
-        // Check for explicit desire to change or take action
+        // Check for desire to change
         if (content.includes('want to') || content.includes('wish') || 
-            content.includes('would like') || content.includes('need to') ||
-            content.includes('have to') || content.includes('should')) {
+            content.includes('would like') || content.includes('need to')) {
           hasSharedDesire = true;
+        }
+
+        // Check for frustration with process
+        if (content.includes('enough') || content.includes('already told you') ||
+            content.includes('how is this relevant') || content.includes('repetitive')) {
+          showsFrustration = true;
+        }
+
+        // Track repeated themes
+        if (content.includes('work') || content.includes('gossip') ||
+            content.includes('office') || content.includes('colleagues')) {
+          repeatedThemes.add(content);
         }
       });
 
-      // More dynamic phase progression rules
+      // Progress quickly if user shows frustration or repetition
+      if (showsFrustration || repeatedThemes.size > 2) {
+        return 'goalsetting';
+      }
+
+      // Dynamic phase progression rules
       switch(currentPhase) {
         case 'exploration':
-          // Move to understanding if emotions are clear
-          if (hasSharedEmotions) {
+          if (hasSharedEmotions || messages.length >= 2) {
             return 'understanding';
           }
           break;
         case 'understanding':
-          // Move to goal setting if impact is clear
-          if ((hasSharedImpact || workImpactShared) && performanceConcern) {
+          if (hasSharedImpact || messages.length >= 3) {
             return 'goalsetting';
           }
           break;
         case 'goalsetting':
-          // Move to strengths if clear desire for change
           if (hasSharedDesire) {
             return 'strengths';
           }
@@ -88,9 +86,9 @@ export const COACHING_AGENTS = {
 
 Remember to:
 - Listen for emotional content
-- Acknowledge feelings without solutions
-- Stay with emotions
-- Validate experiences
+- Keep exploration brief
+- Move forward when emotions are clear
+- Notice signs of readiness
 `,
   },
 
@@ -98,13 +96,13 @@ Remember to:
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) How is this affecting your work life?
+(Nodding thoughtfully) How is this affecting your work performance?
 
 Remember to:
-- Surface patterns and insights
-- Connect to values
-- Deepen understanding
-- Stay with impact
+- Focus on concrete impact
+- Move to goals when impact is clear
+- Avoid repetitive questions
+- Progress when ready
 `,
   },
 
@@ -112,13 +110,13 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) Given what you've shared about this situation's impact on your work, what would you like to see change?
+(Leaning forward with interest) What specific change would you like to see happen?
 
 Remember to:
-- Focus on client's desires
-- Be specific and actionable
-- Connect to values
-- Avoid mentioning strengths
+- Be direct and specific
+- Focus on concrete actions
+- Avoid returning to exploration
+- Move forward purposefully
 `,
   },
 
@@ -126,13 +124,13 @@ Remember to:
     name: "Strengths Integration Agent",
     description: "Uses strengths to support client's goals",
     prompt: (context: string) => `
-(Showing genuine interest) How might your natural abilities help you move toward this goal?
+(Showing genuine interest) How might your natural abilities help you address this situation?
 
 Remember to:
-- Connect strengths to stated goals
-- Focus on client insights
-- Support practical application
-- Build on client's wisdom
+- Connect strengths to specific goals
+- Focus on practical actions
+- Stay solution-focused
+- Support forward momentum
 `,
   },
 };
