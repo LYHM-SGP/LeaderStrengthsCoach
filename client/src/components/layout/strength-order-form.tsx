@@ -253,6 +253,22 @@ export default function StrengthOrderForm() {
             </p>
           </div>
 
+          <div className="flex justify-end mb-6">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={updateStrengths.isPending || isProcessing}
+            >
+              {updateStrengths.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </div>
+
           <div className="grid grid-cols-2 gap-4 py-4">
             {DOMAIN_CATEGORIES.map((domain) => (
               <div key={domain} className="space-y-2">
@@ -279,22 +295,6 @@ export default function StrengthOrderForm() {
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="flex justify-end">
-            <Button 
-              onClick={handleSubmit} 
-              disabled={updateStrengths.isPending || isProcessing}
-            >
-              {updateStrengths.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
