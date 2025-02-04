@@ -10,7 +10,7 @@ import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { COACHING_AGENTS } from './coaching/standards';
-import { generateCoachingResponse } from './lib/qwen';
+import { generateCoachingResponse } from './lib/openai'; // Updated import statement
 import sentiment from 'sentiment';
 
 // Updated sentiment analyzer setup
@@ -260,7 +260,7 @@ export function registerRoutes(app: Express): Server {
       };
 
       try {
-        // Generate response using Qwen with properly ranked strengths context
+        // Generate response using OpenAI with properly ranked strengths context
         const aiResponse = await generateCoachingResponse(
           message,
           topStrengths,
