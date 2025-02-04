@@ -9,6 +9,7 @@ import express from 'express';
 import multer from 'multer';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { COACHING_AGENTS, type CoachingAgent } from './coaching/standards';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const execAsync = promisify(exec);
@@ -68,33 +69,40 @@ Guide the reflection process:
 };
 
 // Define coaching agents
-type CoachingAgent = 'exploration' | 'goalSetting' | 'reflection'; // Add more agents as needed
+type CoachingAgent = 'exploration' | 'goalSetting' | 'reflection' | 'challenge'; // Add more agents as needed
 
 interface CoachingAgentDefinition {
   name: string;
   prompt: (message: string, context: string) => string;
 }
 
-const COACHING_AGENTS: { [agent in CoachingAgent]: CoachingAgentDefinition } = {
-  exploration: {
-    name: 'Exploration Agent',
-    prompt: (message: string, context: string) => `
-      You are a curious and insightful coach.  The client's strengths are ${context}.  The client said: "${message}".  Respond with open-ended questions to encourage further exploration.
-    `
-  },
-  goalSetting: {
-    name: 'Goal Setting Agent',
-    prompt: (message: string, context: string) => `
-      You are a coach helping the client set SMART goals.  The client's strengths are ${context}. The client said: "${message}". Help the client define specific, measurable, achievable, relevant, and time-bound goals.
-    `
-  },
-  reflection: {
-    name: 'Reflection Agent',
-    prompt: (message: string, context: string) => `
-      You are a coach guiding the client through a reflection exercise. The client's strengths are ${context}. The client said: "${message}". Help the client identify key learnings, insights, and areas for growth.
-    `
-  }
-};
+//This is now imported from standards.ts
+// const COACHING_AGENTS: { [agent in CoachingAgent]: CoachingAgentDefinition } = {
+//   exploration: {
+//     name: 'Exploration Agent',
+//     prompt: (message: string, context: string) => `
+//       You are a curious and insightful coach.  The client's strengths are ${context}.  The client said: "${message}".  Respond with open-ended questions to encourage further exploration.
+//     `
+//   },
+//   goalSetting: {
+//     name: 'Goal Setting Agent',
+//     prompt: (message: string, context: string) => `
+//       You are a coach helping the client set SMART goals.  The client's strengths are ${context}. The client said: "${message}". Help the client define specific, measurable, achievable, relevant, and time-bound goals.
+//     `
+//   },
+//   reflection: {
+//     name: 'Reflection Agent',
+//     prompt: (message: string, context: string) => `
+//       You are a coach guiding the client through a reflection exercise. The client's strengths are ${context}. The client said: "${message}". Help the client identify key learnings, insights, and areas for growth.
+//     `
+//   }
+//   challenge: {
+//     name: 'Challenge Agent',
+//     prompt: (message: string, context: string) => `
+//       You are a coach who challenges the client's assumptions and encourages them to think outside the box. The client's strengths are ${context}. The client said: "${message}".  Ask questions that challenge the client's perspective and encourage them to consider alternative approaches.
+//     `
+//   }
+// };
 
 
 export function registerRoutes(app: Express): Server {
@@ -266,11 +274,11 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/ai-coaching", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { message, agent = 'exploration' } = req.body;
+    const { message } = req.body;
     const userId = req.user.id;
 
     try {
-      // Get user's strengths
+      // Get user's strengths for context
       const userStrengths = await db.query.strengths.findMany({
         where: eq(strengths.userId, userId),
         orderBy: (strengths, { asc }) => [asc(strengths.score)],
@@ -282,22 +290,34 @@ export function registerRoutes(app: Express): Server {
         .map(s => s.name)
         .join(", ");
 
-      // Get the appropriate agent and prompt
-      const selectedAgent = COACHING_AGENTS[agent as CoachingAgent];
-      if (!selectedAgent) {
-        throw new Error("Unsupported coaching agent");
-      }
+      // Generate prompts from all three agents
+      const agentPrompts = {
+        exploration: COACHING_AGENTS.exploration.prompt(message, topStrengths),
+        reflection: COACHING_AGENTS.reflection.prompt(message, topStrengths),
+        challenge: COACHING_AGENTS.challenge.prompt(message, topStrengths),
+      };
 
       // TODO: Replace with actual Qwen API call once we have the details
-      // For now, returning a placeholder response
-      const aiResponse = "Qwen API integration pending. Please provide API details.";
+      // For now, returning a placeholder response that demonstrates the multi-agent approach
+      const aiResponse = `I notice you're exploring an interesting topic, especially given your strengths in ${topStrengths}. 
+
+Let me help you dive deeper:
+
+1. From an exploration perspective: ${COACHING_AGENTS.exploration.prompt(message, topStrengths)}
+
+2. Reflecting on what you've shared: ${COACHING_AGENTS.reflection.prompt(message, topStrengths)}
+
+3. To challenge your thinking: ${COACHING_AGENTS.challenge.prompt(message, topStrengths)}`;
 
       // Store the conversation in coaching notes
       await db.insert(coachingNotes).values({
         userId: req.user.id,
-        title: `AI Coaching Session: ${selectedAgent.name}`,
-        content: `Q: ${message}\nA: ${aiResponse}`,
-        tags: { agent, strengths: topStrengths }
+        title: "AI Coaching Session",
+        content: `Q: ${message}\n\nA: ${aiResponse}`,
+        tags: {
+          strengths: topStrengths,
+          agents: ["exploration", "reflection", "challenge"]
+        }
       });
 
       res.json({ response: aiResponse });
