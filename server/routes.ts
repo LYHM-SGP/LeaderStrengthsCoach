@@ -182,45 +182,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // LinkedIn feed route - simplified to just fetch posts
-  app.get("/api/linkedin-feed", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-
-    try {
-      // Fetch user's LinkedIn posts using v2 API
-      const response = await fetch(
-        'https://api.linkedin.com/v2/posts?author=urn:li:person:me',
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
-            'LinkedIn-Version': '202401',
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`LinkedIn API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const posts = data.elements || [];
-
-      res.json(posts.map(post => ({
-        id: post.id,
-        message: post.commentary || post.content || '',
-        created: {
-          time: new Date(post.created.time).getTime()
-        }
-      })));
-    } catch (error) {
-      console.error('LinkedIn feed error:', error);
-      res.status(500).json({ 
-        message: "Failed to fetch LinkedIn posts", 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }
