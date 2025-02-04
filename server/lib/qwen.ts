@@ -10,29 +10,40 @@ interface QwenResponse {
 }
 
 export async function callQwenApi(prompt: string): Promise<string> {
-  const response = await fetch('https://api.qwen.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.QWEN_API_KEY}`
-    },
-    body: JSON.stringify({
-      model: 'qwen-max',
-      messages: [
-        { role: 'system', content: 'You are an ICF PCC certified coach following strict coaching standards.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000
-    })
-  });
+  try {
+    const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.QWEN_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'qwen-turbo',
+        input: {
+          messages: [
+            { role: 'system', content: 'You are an ICF PCC certified coach following strict coaching standards.' },
+            { role: 'user', content: prompt }
+          ]
+        },
+        parameters: {
+          temperature: 0.7,
+          top_p: 0.95,
+          max_tokens: 1000
+        }
+      })
+    });
 
-  if (!response.ok) {
-    throw new Error(`Qwen API error: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Qwen API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.output.text;
+  } catch (error) {
+    console.error('Error calling Qwen API:', error);
+    throw new Error(error instanceof Error ? error.message : 'Unknown error occurred while calling Qwen API');
   }
-
-  const data: QwenResponse = await response.json();
-  return data.response;
 }
 
 export async function generateCoachingResponse(

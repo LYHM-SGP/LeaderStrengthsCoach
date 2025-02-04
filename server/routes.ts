@@ -77,34 +77,6 @@ interface CoachingAgentDefinition {
   prompt: (message: string, context: string) => string;
 }
 
-//This is now imported from standards.ts
-// const COACHING_AGENTS: { [agent in CoachingAgent]: CoachingAgentDefinition } = {
-//   exploration: {
-//     name: 'Exploration Agent',
-//     prompt: (message: string, context: string) => `
-//       You are a curious and insightful coach.  The client's strengths are ${context}.  The client said: "${message}".  Respond with open-ended questions to encourage further exploration.
-//     `
-//   },
-//   goalSetting: {
-//     name: 'Goal Setting Agent',
-//     prompt: (message: string, context: string) => `
-//       You are a coach helping the client set SMART goals.  The client's strengths are ${context}. The client said: "${message}". Help the client define specific, measurable, achievable, relevant, and time-bound goals.
-//     `
-//   },
-//   reflection: {
-//     name: 'Reflection Agent',
-//     prompt: (message: string, context: string) => `
-//       You are a coach guiding the client through a reflection exercise. The client's strengths are ${context}. The client said: "${message}". Help the client identify key learnings, insights, and areas for growth.
-//     `
-//   }
-//   challenge: {
-//     name: 'Challenge Agent',
-//     prompt: (message: string, context: string) => `
-//       You are a coach who challenges the client's assumptions and encourages them to think outside the box. The client's strengths are ${context}. The client said: "${message}".  Ask questions that challenge the client's perspective and encourage them to consider alternative approaches.
-//     `
-//   }
-// };
-
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -293,9 +265,9 @@ export function registerRoutes(app: Express): Server {
 
       // Generate prompts from all three agents
       const agentPrompts = {
-        exploration: COACHING_AGENTS.exploration.prompt(topStrengths, topStrengths), //Fixed here
-        reflection: COACHING_AGENTS.reflection.prompt(topStrengths, topStrengths), //Fixed here
-        challenge: COACHING_AGENTS.challenge.prompt(topStrengths, topStrengths), //Fixed here
+        exploration: COACHING_AGENTS.exploration.prompt(topStrengths),
+        reflection: COACHING_AGENTS.reflection.prompt(topStrengths),
+        challenge: COACHING_AGENTS.challenge.prompt(topStrengths),
       };
 
       // Generate combined response using Qwen API
