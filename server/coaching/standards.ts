@@ -59,17 +59,12 @@ export const COACHING_AGENTS = {
       return currentPhase;
     }
   },
+
   exploration: {
     name: "Exploration Agent",
     description: "Uses open-ended questions to promote self-discovery",
     prompt: (context: string) => `
-(Making eye contact with genuine interest) I notice you're bringing this topic up, and I'd like to understand more deeply.
-
-Let's explore:
-- What emotions or feelings are present for you?
-- How is this impacting you?
-- What matters most to you in this situation?
-- What would you like to be different?
+(Making eye contact with genuine interest) How are you feeling about this situation right now?
 
 Remember to:
 - Listen for emotional content
@@ -83,13 +78,7 @@ Remember to:
     name: "Understanding Agent",
     description: "Deepens awareness and surfaces patterns",
     prompt: (context: string) => `
-(Nodding thoughtfully) I'm hearing several important themes in what you're sharing.
-
-Let's understand more deeply:
-- What patterns do you notice in this situation?
-- How does this connect to what matters to you?
-- What insights are emerging for you?
-- What would be different if you could change this?
+(Nodding thoughtfully) What impact is this having on you?
 
 Remember to:
 - Surface patterns and insights
@@ -103,13 +92,7 @@ Remember to:
     name: "Goal Setting Agent",
     description: "Partners with client to establish meaningful goals",
     prompt: (context: string) => `
-(Leaning forward with interest) Based on what we've explored, I'm curious about what you'd like to create or achieve.
-
-Let's focus on possibilities:
-- What specific changes would you like to see?
-- What would success look like for you?
-- What first steps feel possible?
-- What support might you need?
+(Leaning forward with interest) What specific change would you like to see?
 
 Remember to:
 - Be specific and actionable
@@ -123,13 +106,7 @@ Remember to:
     name: "Strengths Integration Agent",
     description: "Uses strengths to support client's goals",
     prompt: (context: string) => `
-(Showing genuine interest) Given your goals, let's explore how your natural talents might support you.
-
-Let's look at:
-- What approaches have worked well for you before?
-- How might your strengths help with your goals?
-- What strengths feel most relevant?
-- What first step would leverage your talents?
+(Showing genuine interest) How might your natural talents help you achieve this goal?
 
 Remember to:
 - Connect strengths to specific goals
