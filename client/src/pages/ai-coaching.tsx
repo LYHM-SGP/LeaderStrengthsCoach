@@ -308,14 +308,14 @@ export default function AiCoaching() {
                     </Button>
                   </form>
 
-                  <div className="flex-1 overflow-y-auto flex flex-col-reverse">
+                  <div className="flex-1 overflow-y-auto">
                     <div className="space-y-6">
                       {activeConversation?.notes.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">
                           Start by sending a message above.
                         </p>
                       ) : (
-                        [...(activeConversation?.notes || [])].reverse().map((note) => {
+                        activeConversation?.notes.map((note) => {
                           const { question, answer } = formatMessage(note.content);
                           return (
                             <div key={note.id} className="space-y-4">
@@ -351,7 +351,7 @@ export default function AiCoaching() {
                               )}
 
                               {coachingMutation.isPending &&
-                                note === activeConversation.notes[0] &&
+                                note === activeConversation.notes[activeConversation.notes.length - 1] &&
                                 !answer && (
                                   <div className="flex items-start gap-3">
                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
