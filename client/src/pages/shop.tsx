@@ -6,20 +6,27 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { FileText, Calendar } from "lucide-react";
-import { useEffect } from "react";
+import { FileText, Calendar, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 declare const Stripe: any;
 
 let stripePromise: Promise<any> | null = null;
 
-const getStripe = () => {
+const getStripe = async () => {
   if (!stripePromise) {
-    stripePromise = new Promise((resolve) => {
+    stripePromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://js.stripe.com/v3/';
       script.onload = () => {
+        if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+          reject(new Error('Stripe public key is not configured'));
+          return;
+        }
         resolve(Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY));
+      };
+      script.onerror = () => {
+        reject(new Error('Failed to load Stripe'));
       };
       document.body.appendChild(script);
     });
@@ -30,15 +37,22 @@ const getStripe = () => {
 export default function Shop() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const { data: products, error } = useQuery<SelectProduct[]>({
     queryKey: ["/api/products"],
   });
 
   useEffect(() => {
-    // Load Stripe on component mount
-    getStripe();
-  }, []);
+    // Preload Stripe on component mount
+    getStripe().catch(error => {
+      toast({
+        title: "Stripe initialization failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    });
+  }, [toast]);
 
   if (error) {
     toast({
@@ -46,22 +60,29 @@ export default function Shop() {
       description: error.message,
       variant: "destructive",
     });
-    return <div>Error loading products</div>; //Added a return statement to prevent rendering further if error occurs.
+    return <div>Error loading products</div>;
   }
 
   const handleCheckout = async (productId: number) => {
     try {
+      setIsLoading(true);
       const res = await apiRequest("POST", "/api/checkout", { productId });
       const { sessionId } = await res.json();
 
       const stripe = await getStripe();
-      await stripe.redirectToCheckout({ sessionId });
+      const { error } = await stripe.redirectToCheckout({ sessionId });
+
+      if (error) {
+        throw error;
+      }
     } catch (error) {
       toast({
         title: "Checkout failed",
         description: (error as Error).message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,8 +123,16 @@ export default function Shop() {
                   <Button
                     className="w-full"
                     onClick={() => handleCheckout(product.id)}
+                    disabled={isLoading}
                   >
-                    Purchase
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Purchase'
+                    )}
                   </Button>
                 </CardFooter>
               </Card>

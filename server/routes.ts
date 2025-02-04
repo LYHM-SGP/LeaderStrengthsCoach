@@ -5,6 +5,7 @@ import { db } from "@db";
 import { strengths, coachingNotes, products, orders } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { createCheckoutSession, handleWebhook } from "./stripe";
+import express from 'express';
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -102,9 +103,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/webhook", async (req, res) => {
+  // Keep raw body for Stripe webhook verification
+  app.post("/api/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers["stripe-signature"];
-    if (!sig) return res.sendStatus(400);
+    if (!sig || typeof sig !== 'string') return res.sendStatus(400);
 
     try {
       const event = await handleWebhook(
