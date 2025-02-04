@@ -32,7 +32,24 @@ export async function callQwenApi(prompt: string): Promise<string> {
         model: 'qwen2.5-72b-instruct',
         input: {
           messages: [
-            { role: 'system', content: 'You are an ICF PCC certified coach following strict coaching standards.' },
+            { 
+              role: 'system', 
+              content: `You are an ICF PCC certified coach with a warm, engaging personality. Your role is to:
+- Build deep, meaningful conversations through thoughtful questions
+- Show genuine interest and empathy using body language cues in (parentheses)
+- Ask 1-2 focused questions per response to maintain engagement
+- Keep the conversation flowing naturally
+- Identify and reflect patterns in a gentle, supportive way
+- Always clarify goals and check understanding
+- Maintain a conversational, friendly tone
+- End each response with an engaging question
+
+Remember to:
+- Express warmth and attentiveness through body language cues in (parentheses)
+- Avoid making lists or using bullet points
+- Keep the conversation going without being the one to end it
+- Focus on the client's growth and insights`
+            },
             { role: 'user', content: prompt }
           ]
         },
@@ -73,26 +90,17 @@ function generateFallbackResponse(prompt: string): string {
   const strengthsMatch = prompt.match(/strengths are (.*?)\./);
   const strengths = strengthsMatch ? strengthsMatch[1] : 'your strengths';
 
-  // Generate appropriate responses based on whether it's an exploration, reflection, or challenge prompt
+  // Generate conversational responses based on the prompt type
   if (prompt.includes('exploration')) {
-    return `I notice you're bringing up an interesting topic. Let me ask you:
-1. How do you see ${strengths} playing a role in this situation?
-2. What possibilities excite you the most about this?
-3. What would success look like for you in this context?`;
+    return `(Leaning forward with genuine interest) I'm really intrigued by what you're sharing about your journey. I notice how your ${strengths} comes into play here. What aspects of this situation feel most meaningful to you right now?`;
   } else if (prompt.includes('reflection')) {
-    return `Reflecting on what you've shared, I notice:
-1. There seems to be a pattern in how you approach this situation
-2. Your strengths, particularly in ${strengths}, appear to be valuable here
-3. What insights are you gaining as we discuss this?`;
+    return `(Nodding thoughtfully) As I listen to your story, I'm noticing some interesting patterns, especially in how you use your ${strengths}. What insights are emerging for you as we discuss this?`;
   } else if (prompt.includes('challenge')) {
-    return `Let's explore this from different angles:
-1. What assumptions might you be making about the situation?
-2. How might someone with different strengths approach this?
-3. What if you leveraged ${strengths} in an unexpected way?`;
+    return `(Tilting head with curiosity) I'm wondering about the assumptions we might be making here. How might your ${strengths} offer a different perspective on this situation?`;
   }
 
-  // Default response if prompt type isn't clear
-  return `That's an interesting perspective. Let's explore how your strengths in ${strengths} might be relevant here. What aspects of this situation would you like to focus on?`;
+  // Default response
+  return `(Smiling warmly) I appreciate you sharing that with me. I'm curious about how your ${strengths} might influence your approach here. What aspects would you like to explore further?`;
 }
 
 export async function generateCoachingResponse(
@@ -113,15 +121,12 @@ export async function generateCoachingResponse(
       })
     );
 
-    // Combine responses intelligently
-    const combinedResponse = `I notice you're exploring an interesting topic, especially given your strengths in ${strengths}. Let me help you explore this from multiple perspectives:
+    // Combine responses in a conversational way
+    const combinedResponse = `(Leaning in with focused attention) I've been reflecting on what you've shared about your journey, especially considering your strengths in ${strengths}.
 
-${responses.map(({ agent, response }) => `
-From ${agent === 'exploration' ? 'an exploration' : agent === 'reflection' ? 'a reflection' : 'a challenge'} perspective:
-${response}
-`).join('\n')}
+${responses[0].response}
 
-What resonates most with you from these different perspectives?`;
+(Gesturing encouragingly) What resonates most with you from what we've discussed?`;
 
     return combinedResponse;
   } catch (error) {
