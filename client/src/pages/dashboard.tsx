@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import Sidebar from "@/components/layout/sidebar";
 import StrengthsOverview from "@/components/layout/strengths-overview";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import type { SelectStrength, SelectNote } from "@db/schema";
 
@@ -48,11 +48,9 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Strengths Overview</CardTitle>
+                <CardTitle>Strengths Domains Overview</CardTitle>
               </CardHeader>
-              <CardContent>
-                <StrengthsOverview />
-              </CardContent>
+              <StrengthsOverview />
             </Card>
           </div>
 
