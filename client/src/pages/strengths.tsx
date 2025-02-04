@@ -76,20 +76,16 @@ export default function Strengths() {
 
     return DOMAIN_CATEGORIES.map(domain => {
       const domainThemes = THEMES[domain];
-      const strengthsInDomain = strengths.filter(s => 
+      const strengthsInDomain = strengths.filter(s =>
         domainThemes.some(theme => theme.name === s.name)
       );
 
-      // Calculate average rank (lower is better)
-      const avgRank = strengthsInDomain.reduce((sum, s) => sum + s.score, 0) / 
-        (strengthsInDomain.length || 1);
-
-      // Normalize score (34 - rank to make higher ranks = higher score, then normalize to 0-100)
-      const normalizedScore = ((34 - avgRank) / 34) * 100;
+      // Sum up all ranks in the domain
+      const totalRank = strengthsInDomain.reduce((sum, s) => sum + s.score, 0);
 
       return {
         domain,
-        value: Math.round(normalizedScore)
+        value: totalRank
       };
     });
   };
@@ -133,7 +129,7 @@ export default function Strengths() {
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={calculateDomainScores()}>
                   <PolarGrid />
-                  <PolarAngleAxis 
+                  <PolarAngleAxis
                     dataKey="domain"
                     tick={{ fill: 'hsl(var(--foreground))', fontSize: 12 }}
                   />
