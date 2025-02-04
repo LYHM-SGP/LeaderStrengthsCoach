@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertNoteSchema } from "@db/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -15,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { THEMES } from "@/pages/strengths";
+import { THEMES, DOMAIN_CATEGORIES } from "@/pages/strengths";
 import { UploadCloud, Loader2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 
@@ -55,7 +53,7 @@ const INITIAL_RANKINGS = {
   'Harmony': 32,
   'Consistency': 33,
   'Includer': 34
-};
+} as const;
 
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
@@ -66,7 +64,7 @@ export default function StrengthOrderForm() {
   const form = useForm();
 
   const updateStrengths = useMutation({
-    mutationFn: (data: any) => {
+    mutationFn: (data: Array<{ name: string; score: number }>) => {
       return apiRequest("POST", "/api/strengths/bulk", data).then(res => res.json());
     },
     onSuccess: () => {
@@ -135,7 +133,6 @@ export default function StrengthOrderForm() {
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
 
-            // Get header row (row 3) and data row (row 4)
             const headerRow = rows[2];
             const dataRow = rows[3];
 
@@ -145,7 +142,6 @@ export default function StrengthOrderForm() {
 
             const newRankings: Record<string, number> = {};
 
-            // Start from column 5 (index 4) where Theme columns begin
             for (let i = 4; i < headerRow.length; i++) {
               const headerCell = headerRow[i];
               if (typeof headerCell === 'string') {
@@ -193,15 +189,15 @@ export default function StrengthOrderForm() {
     } finally {
       setIsProcessing(false);
       if (event.target) {
-        event.target.value = ''; // Reset file input
+        event.target.value = '';
       }
     }
   };
 
   const handleSubmit = () => {
-    const orderedStrengths = Object.entries(strengthsOrder).map(([name, rank]) => ({
+    const orderedStrengths = Object.entries(strengthsOrder).map(([name, score]) => ({
       name,
-      score: rank,
+      score,
     }));
 
     updateStrengths.mutate(orderedStrengths);
@@ -242,34 +238,44 @@ export default function StrengthOrderForm() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 py-4">
-          {Object.entries(THEMES).map(([domain, themesList]) => (
-            <div key={domain}>
-              <h3 className="font-semibold mb-2">{domain}</h3>
-              {themesList.map((themeName: string) => (
-                <div key={themeName} className="mb-2">
-                  <Label htmlFor={themeName}>{themeName}</Label>
-                  <Input
-                    id={themeName}
-                    type="number"
-                    min="1"
-                    max="34"
-                    value={strengthsOrder[themeName] || ""}
-                    placeholder="Enter rank (1-34)"
-                    onChange={(e) => {
-                      const newValue = parseInt(e.target.value, 10);
-                      if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
-                        setStrengthsOrder((prev) => ({
-                          ...prev,
-                          [themeName]: newValue,
-                        }));
-                      }
-                    }}
-                  />
-                </div>
-              ))}
+          {DOMAIN_CATEGORIES.map((domain) => (
+            <div key={domain} className="space-y-2">
+              <div className="text-center border-b border-gray-200 pb-2">
+                <h2 className="text-sm font-semibold tracking-wider uppercase">
+                  {domain}
+                  <span className="text-xs align-top ml-0.5">®</span>
+                </h2>
+              </div>
+              <div className="space-y-1">
+                {THEMES[domain].map((theme) => {
+                  const themeName = theme.name;
+                  return (
+                    <div key={themeName} className="mb-2">
+                      <Label>{themeName}</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="34"
+                        value={strengthsOrder[themeName] || ""}
+                        placeholder="Enter rank (1-34)"
+                        onChange={(e) => {
+                          const newValue = parseInt(e.target.value, 10);
+                          if (!isNaN(newValue) && newValue >= 1 && newValue <= 34) {
+                            setStrengthsOrder((prev) => ({
+                              ...prev,
+                              [themeName]: newValue,
+                            }));
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>
+
         <div className="flex justify-end">
           <Button 
             onClick={handleSubmit} 
