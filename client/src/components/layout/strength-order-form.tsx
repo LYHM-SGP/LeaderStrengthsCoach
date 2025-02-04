@@ -55,11 +55,6 @@ const INITIAL_RANKINGS = {
   'Includer': 34
 };
 
-// Map from "Theme X" to strength name
-const strengthNamesByRank = Object.entries(INITIAL_RANKINGS)
-  .sort((a, b) => a[1] - b[1])
-  .map(([name]) => name);
-
 export default function StrengthOrderForm() {
   const [open, setOpen] = useState(false);
   const [strengthsOrder, setStrengthsOrder] = useState<Record<string, number>>(INITIAL_RANKINGS);
@@ -107,34 +102,44 @@ export default function StrengthOrderForm() {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as string[][];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[];
 
-            // Process each row looking for Theme numbers
-            rows.forEach((row) => {
-              row.forEach((cell) => {
-                if (typeof cell === "string") {
-                  const themeMatch = cell.match(/Theme (\d+)/i);
-                  if (themeMatch) {
-                    const rank = parseInt(themeMatch[1]);
-                    if (rank >= 1 && rank <= 34) {
-                      const strengthName = strengthNamesByRank[rank - 1];
-                      if (strengthName) {
-                        newRankings[strengthName] = rank;
-                      }
-                    }
+            // Find header row with Theme columns
+            const headerRow = rows[0];
+            const themeColumns: { index: number, themeNumber: number }[] = [];
+
+            // Find which columns contain Theme numbers
+            headerRow.forEach((cell: string, index: number) => {
+              if (typeof cell === 'string') {
+                const match = cell.match(/Theme (\d+)/i);
+                if (match) {
+                  const themeNumber = parseInt(match[1]);
+                  if (themeNumber >= 1 && themeNumber <= 34) {
+                    themeColumns.push({ index, themeNumber });
                   }
                 }
-              });
+              }
+            });
+
+            // Process each Theme column
+            themeColumns.forEach(({ index, themeNumber }) => {
+              // Look at the first data row (index 1) for the strength name
+              if (rows[1] && rows[1][index]) {
+                const strengthName = rows[1][index];
+                if (typeof strengthName === 'string' && INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
+                  newRankings[strengthName] = themeNumber;
+                }
+              }
             });
 
             if (Object.keys(newRankings).length > 0) {
               setStrengthsOrder((prev) => {
                 console.log("Updating strengths order:", newRankings);
-                return { ...newRankings };
+                return { ...prev, ...newRankings };
               });
               toast({
                 title: "File processed",
-                description: "Strength rankings have been updated from the Excel file.",
+                description: `Updated ${Object.keys(newRankings).length} strength rankings from the Excel file.`,
               });
             } else {
               throw new Error("No valid rankings found in the Excel file");
@@ -159,8 +164,8 @@ export default function StrengthOrderForm() {
           if (match) {
             const rank = parseInt(match[1]);
             if (rank >= 1 && rank <= 34) {
-              const strengthName = strengthNamesByRank[rank - 1];
-              if (strengthName) {
+              const strengthName = lines[1]; // Get the strength name from the next line
+              if (INITIAL_RANKINGS.hasOwnProperty(strengthName)) {
                 newRankings[strengthName] = rank;
               }
             }
@@ -170,7 +175,7 @@ export default function StrengthOrderForm() {
         if (Object.keys(newRankings).length > 0) {
           setStrengthsOrder((prev) => {
             console.log("Updating strengths order:", newRankings);
-            return { ...newRankings };
+            return { ...prev, ...newRankings };
           });
           toast({
             title: "File processed",
@@ -252,8 +257,8 @@ export default function StrengthOrderForm() {
                     value={strengthsOrder[theme.name] || ""}
                     placeholder="Enter rank (1-34)"
                     onChange={(e) => {
-                      const newValue = parseInt(e.target.value, 10); 
-                      if (!isNaN(newValue)) { 
+                      const newValue = parseInt(e.target.value, 10);
+                      if (!isNaN(newValue)) {
                         setStrengthsOrder((prev) => ({
                           ...prev,
                           [theme.name]: newValue,
